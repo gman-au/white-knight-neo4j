@@ -35,7 +35,7 @@
         <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.6"/>
         <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.6"/>
         <PackageReference Include="Neo4j.Driver" Version="5.28.3"/>
-        <PackageReference Include="White.Knight.Injection.Abstractions" Version="9.0.15.1-alpha" />
+        <PackageReference Include="White.Knight.Injection.Abstractions" Version="9.0.15.3-alpha" />
     </ItemGroup>
 
     <!-- Include referenced project outputs -->

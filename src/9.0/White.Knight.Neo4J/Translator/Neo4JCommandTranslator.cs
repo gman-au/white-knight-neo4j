@@ -1,6 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using White.Knight.Abstractions.Extensions;
+using White.Knight.Domain;
+using White.Knight.Domain.Exceptions;
 using White.Knight.Interfaces;
 using White.Knight.Interfaces.Command;
 
@@ -25,7 +29,10 @@ namespace White.Knight.Neo4J.Translator
                 typeof(TD)
                     .Name;
 
-            var commandText = $"MATCH (a:{entityName} {{ {Constants.IdFieldPlaceholder}: $id }}) RETURN a";
+            var commandText =
+                $"MATCH ({Constants.NodeAliasPlaceholder}:{entityName} " +
+                $"{{ {Constants.IdFieldPlaceholder}: $id }}) " +
+                $"{Constants.ActionCommandPlaceholder} {Constants.NodeAliasPlaceholder}";
 
             var parameters = new Dictionary<string, string>
             {
@@ -44,11 +51,39 @@ namespace White.Knight.Neo4J.Translator
 
         public Neo4JTranslationResult Translate<TP>(IQueryCommand<TD, TP> command)
         {
-            return new Neo4JTranslationResult
+            var specification = command.Specification;
+            var pagingOptions = command.PagingOptions;
+
+            try
             {
-                CommandText = null,
-                Parameters = null
-            };
+                var entityName =
+                    typeof(TD)
+                        .Name;
+
+                var query = Translate(specification);
+
+                var commandText =
+                    $"MATCH ({Constants.NodeAliasPlaceholder}:{entityName}) " +
+                    $"WHERE {query} RETURN {Constants.NodeAliasPlaceholder}";
+
+                var parameters = new Dictionary<string, string>();
+
+                _logger
+                    .LogDebug("Translated Query: ({specification}) [{query}]", specification.GetType().Name, query);
+
+                return new Neo4JTranslationResult
+                {
+                    CommandText = commandText,
+                    Parameters = parameters
+                };
+            }
+            catch (Exception e) when (e is NotImplementedException or UnparsableSpecificationException)
+            {
+                _logger
+                    .LogDebug("Error translating Query: ({specification})", specification.GetType().Name);
+
+                throw;
+            }
         }
 
         public Neo4JTranslationResult Translate(IUpdateCommand<TD> command)
@@ -57,11 +92,11 @@ namespace White.Knight.Neo4J.Translator
                 typeof(TD)
                     .Name;
 
-            var commandText = $"MERGE (a:{entityName} {{ {Constants.SetterStringPlaceholder} }}) RETURN a";
+            var commandText =
+                $"MERGE ({Constants.NodeAliasPlaceholder}.:{entityName} " +
+                $"{{ {Constants.SetterStringPlaceholder} }}) RETURN {Constants.NodeAliasPlaceholder}.";
 
-            var parameters = new Dictionary<string, string>
-            {
-            };
+            var parameters = new Dictionary<string, string>();
 
             _logger
                 .LogDebug("Translated Query: [{query}]", commandText);
@@ -70,6 +105,33 @@ namespace White.Knight.Neo4J.Translator
             {
                 CommandText = commandText,
                 Parameters = parameters
+            };
+        }
+
+        private string Translate(Specification<TD> spec)
+        {
+            var name = string.Empty;
+            return spec switch
+            {
+                SpecificationByAll<TD> => " * ",
+                SpecificationByNone<TD> => throw new UnparsableSpecificationException(),
+                SpecificationByEquals<TD, string> eq =>
+                    $"{Constants.NodeAliasPlaceholder}.{eq.Property.Body.GetPropertyExpressionPath(ref name)} = '{eq.Value}'",
+                SpecificationByEquals<TD, int> eq =>
+                    $"{Constants.NodeAliasPlaceholder}.{eq.Property.Body.GetPropertyExpressionPath(ref name)} = {eq.Value}",
+                SpecificationByEquals<TD, Guid> eq =>
+                    $"{Constants.NodeAliasPlaceholder}.{eq.Property.Body.GetPropertyExpressionPath(ref name)} = {eq.Value.ToString()}",
+                SpecificationByAnd<TD> and => $"({Translate(and.Left)} AND {Translate(and.Right)})",
+                SpecificationByOr<TD> and => $"({Translate(and.Left)} OR {Translate(and.Right)})",
+                SpecificationByNot<TD> => throw new UnparsableSpecificationException(),
+                SpecificationByTextStartsWith<TD> text =>
+                    $"{Constants.NodeAliasPlaceholder}.{text.Property.Body.GetPropertyExpressionPath(ref name)} = {text.Value}*",
+                SpecificationByTextEndsWith<TD> text =>
+                    $"{Constants.NodeAliasPlaceholder}.{text.Property.Body.GetPropertyExpressionPath(ref name)} = {text.Value}",
+                SpecificationByTextContains<TD> text =>
+                    $"{Constants.NodeAliasPlaceholder}.{text.Property.Body.GetPropertyExpressionPath(ref name)} = {text.Value}*",
+                SpecificationThatIsNotCompatible<TD> => throw new UnparsableSpecificationException(),
+                _ => throw new NotImplementedException()
             };
         }
     }

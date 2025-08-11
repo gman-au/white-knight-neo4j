@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using White.Knight.Domain;
+using White.Knight.Domain.Exceptions;
 using White.Knight.Interfaces;
 using White.Knight.Interfaces.Command;
 using White.Knight.Neo4J.Options;
@@ -37,27 +38,46 @@ namespace White.Knight.Neo4J
                 Stopwatch
                     .Restart();
 
-                throw new NotImplementedException();
-/*
-                await using var driver =
-                    await
-                        _neo4JConnector
-                            .GetDriverAsync(cancellationToken);
+                var translationResult =
+                    _commandTranslator
+                        .Translate(command);
 
+                if (translationResult == null)
+                    throw new Exception("There was an error translating the Redis command.");
+
+                translationResult.CommandText =
+                    translationResult
+                        .CommandText
+                        .Replace(Constants.ActionCommandPlaceholder, "RETURN")
+                        .Replace(Constants.NodeAliasPlaceholder, "a");
+
+                var result =
+                    await
+                        _neo4JExecutor
+                            .RunAsync(
+                                translationResult.CommandText,
+                                translationResult.Parameters,
+                                cancellationToken
+                            );
+
+                return new RepositoryResult<TP>();
+            }
+            catch (UnparsableSpecificationException)
+            {
+                _clientSideEvaluationHandler
+                    .Handle<TD>();
+
+                //TODO: get all and client-side filter
+                throw;/*
                 var queryable =
                     await
-                        _neo4JConnector
-                            .GetDriverAsync(cancellationToken);
+                        _redisCache
+                            .GetAllAsync(cancellationToken);
 
-                var results =
+                return
                     await
                         queryable
-                            .ApplyCommandQueryAsync(command);
-
-                Logger
-                    .LogDebug("Queried records of type [{type}] in {ms} ms", typeof(TD).Name, Stopwatch.ElapsedMilliseconds);
-
-                return results;*/
+                            .ApplyCommandQueryAsync(command);*/
             }
             catch (Exception e)
             {

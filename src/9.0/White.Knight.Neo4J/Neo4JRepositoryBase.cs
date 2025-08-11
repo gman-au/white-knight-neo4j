@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -53,10 +51,6 @@ namespace White.Knight.Neo4J
                 Stopwatch
                     .Restart();
 
-                var selector =
-                    key
-                        .BuildKeySelectorExpression(KeyExpression());
-
                 var translationResult =
                     _commandTranslator
                         .Translate(command);
@@ -73,7 +67,9 @@ namespace White.Knight.Neo4J
                 translationResult.CommandText =
                     translationResult
                         .CommandText
-                        .Replace(Constants.IdFieldPlaceholder, idFieldName);
+                        .Replace(Constants.IdFieldPlaceholder, idFieldName)
+                        .Replace(Constants.ActionCommandPlaceholder, "RETURN")
+                        .Replace(Constants.NodeAliasPlaceholder, "a");
 
                 var result =
                     await
@@ -130,26 +126,34 @@ namespace White.Knight.Neo4J
                 Stopwatch
                     .Restart();
 
-                var selector =
-                    key
-                        .BuildKeySelectorExpression(KeyExpression());
+                var translationResult =
+                    _commandTranslator
+                        .Translate(command);
 
-                var commandQuery = @"
-                    CREATE (a:Person {name: $name, id: $id})
-                    CREATE (b:Person {name: $friendName})
-                    CREATE (a)-[:KNOWS]->(b)
-                    ";
+                if (translationResult == null)
+                    throw new Exception("There was an error translating the Neo4j command.");
 
-                var parameters = new Dictionary<string, string>
-                {
-                    { "id", Guid.NewGuid().ToString() },
-                    { "name", "Alice" },
-                    { "friendName", "David" }
-                };
+                var idFieldName =
+                    ClassEx
+                        .ExtractPropertyInfo<TD>(KeyExpression())?
+                        .Name ??
+                    throw new Exception($"Could not retrieve key expression field from entity type {typeof(TD).Name}");
 
-                await
-                    _neo4JExecutor
-                        .UpsertAsync(commandQuery, parameters, cancellationToken);
+                translationResult.CommandText =
+                    translationResult
+                        .CommandText
+                        .Replace(Constants.IdFieldPlaceholder, idFieldName)
+                        .Replace(Constants.ActionCommandPlaceholder, "DELETE")
+                        .Replace(Constants.NodeAliasPlaceholder, "a");
+
+                var result =
+                    await
+                        _neo4JExecutor
+                            .RunAsync(
+                                translationResult.CommandText,
+                                translationResult.Parameters,
+                                cancellationToken
+                            );
 
                 Logger
                     .LogDebug("Deleted record with key [{key}] in {ms} ms", key, Stopwatch.ElapsedMilliseconds);
