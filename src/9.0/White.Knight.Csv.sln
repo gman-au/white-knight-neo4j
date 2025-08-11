@@ -1,0 +1,24 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "White.Knight.Csv", "White.Knight.Csv\White.Knight.Csv.csproj", "{9F52A79C-7CE3-4E66-AB89-C3A8EE3C136D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "White.Knight.Csv.Tests.Integration", "White.Knight.Csv.Tests.Integration\White.Knight.Csv.Tests.Integration.csproj", "{FF28998D-8F4D-4D85-8775-B2F3AE2BC7B9}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9F52A79C-7CE3-4E66-AB89-C3A8EE3C136D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9F52A79C-7CE3-4E66-AB89-C3A8EE3C136D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9F52A79C-7CE3-4E66-AB89-C3A8EE3C136D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9F52A79C-7CE3-4E66-AB89-C3A8EE3C136D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FF28998D-8F4D-4D85-8775-B2F3AE2BC7B9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FF28998D-8F4D-4D85-8775-B2F3AE2BC7B9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FF28998D-8F4D-4D85-8775-B2F3AE2BC7B9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FF28998D-8F4D-4D85-8775-B2F3AE2BC7B9}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+	EndGlobalSection
+EndGlobal
