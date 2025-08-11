@@ -10,6 +10,9 @@ namespace White.Knight.Neo4J.Tests.Integration.Repositories
     public class AddressRepository(Neo4JRepositoryFeatures<Address> repositoryFeatures)
         : Neo4JKeylessRepositoryBase<Address>(repositoryFeatures)
     {
-        public override Expression<Func<Address, object>> DefaultOrderBy() => o => o.AddressId;
+        public override Expression<Func<Address, object>> DefaultOrderBy()
+        {
+            return o => o.AddressId;
+        }
     }
 }

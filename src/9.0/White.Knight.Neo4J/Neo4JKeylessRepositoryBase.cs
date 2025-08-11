@@ -4,11 +4,11 @@ using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using White.Knight.Abstractions.Extensions;
 using White.Knight.Domain;
 using White.Knight.Interfaces;
 using White.Knight.Interfaces.Command;
 using White.Knight.Neo4J.Options;
+using White.Knight.Neo4J.Translator;
 
 namespace White.Knight.Neo4J
 {
@@ -16,8 +16,10 @@ namespace White.Knight.Neo4J
         Neo4JRepositoryFeatures<TD> repositoryFeatures) : IKeylessRepository<TD>
         where TD : new()
     {
-        private readonly ICsvLoader<TD> _csvLoader = repositoryFeatures.CsvLoader;
+        private readonly IClientSideEvaluationHandler _clientSideEvaluationHandler;
+        private readonly ICommandTranslator<TD, Neo4JTranslationResult> _commandTranslator = repositoryFeatures.CommandTranslator;
         private readonly IRepositoryExceptionRethrower _exceptionRethrower = repositoryFeatures.ExceptionRethrower;
+        private readonly INeo4JExecutor<TD> _neo4JExecutor = repositoryFeatures.Neo4JExecutor;
         protected readonly ILogger Logger = repositoryFeatures.LoggerFactory.CreateLogger<Neo4JKeylessRepositoryBase<TD>>();
         protected readonly Stopwatch Stopwatch = new();
 
@@ -35,10 +37,17 @@ namespace White.Knight.Neo4J
                 Stopwatch
                     .Restart();
 
+                throw new NotImplementedException();
+/*
+                await using var driver =
+                    await
+                        _neo4JConnector
+                            .GetDriverAsync(cancellationToken);
+
                 var queryable =
                     await
-                        _csvLoader
-                            .ReadAsync(cancellationToken);
+                        _neo4JConnector
+                            .GetDriverAsync(cancellationToken);
 
                 var results =
                     await
@@ -48,7 +57,7 @@ namespace White.Knight.Neo4J
                 Logger
                     .LogDebug("Queried records of type [{type}] in {ms} ms", typeof(TD).Name, Stopwatch.ElapsedMilliseconds);
 
-                return results;
+                return results;*/
             }
             catch (Exception e)
             {

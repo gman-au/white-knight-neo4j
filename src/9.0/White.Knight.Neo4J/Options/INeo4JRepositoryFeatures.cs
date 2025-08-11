@@ -1,9 +1,12 @@
 ﻿using White.Knight.Interfaces;
+using White.Knight.Neo4J.Translator;
 
 namespace White.Knight.Neo4J.Options
 {
     public interface INeo4JRepositoryFeatures<T> : IRepositoryFeatures
     {
-        public ICsvLoader<T> CsvLoader { get; set; }
+        public INeo4JExecutor<T> Neo4JExecutor { get; set; }
+
+        public ICommandTranslator<T, Neo4JTranslationResult> CommandTranslator { get; set; }
     }
 }

@@ -1,11 +1,11 @@
 ﻿using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using White.Knight.Domain.Enum;
+using White.Knight.Injection.Abstractions;
 using White.Knight.Neo4J.Injection;
 using White.Knight.Neo4J.Options;
 using White.Knight.Neo4J.Tests.Integration.Repositories;
-using White.Knight.Domain.Enum;
-using White.Knight.Injection.Abstractions;
 using White.Knight.Tests.Abstractions;
 using White.Knight.Tests.Abstractions.Extensions;
 using White.Knight.Tests.Abstractions.Injection;
@@ -14,7 +14,7 @@ using White.Knight.Tests.Domain;
 
 namespace White.Knight.Neo4J.Tests.Integration
 {
-    public class CsvInjectionTests() : AbstractedInjectionTests(new CsvInjectionTestContext())
+    public class Neo4JInjectionTests() : AbstractedInjectionTests(new CsvInjectionTestContext())
     {
         private static readonly Assembly RepositoryAssembly =
             Assembly

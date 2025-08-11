@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -8,7 +10,9 @@ using White.Knight.Abstractions.Extensions;
 using White.Knight.Abstractions.Fluent;
 using White.Knight.Interfaces;
 using White.Knight.Interfaces.Command;
+using White.Knight.Neo4J.Extensions;
 using White.Knight.Neo4J.Options;
+using White.Knight.Neo4J.Translator;
 
 namespace White.Knight.Neo4J
 {
@@ -17,7 +21,8 @@ namespace White.Knight.Neo4J
         : Neo4JKeylessRepositoryBase<TD>(repositoryFeatures), IRepository<TD>
         where TD : new()
     {
-        private readonly ICsvLoader<TD> _csvLoader = repositoryFeatures.CsvLoader;
+        private readonly ICommandTranslator<TD, Neo4JTranslationResult> _commandTranslator = repositoryFeatures.CommandTranslator;
+        private readonly INeo4JExecutor<TD> _neo4JExecutor = repositoryFeatures.Neo4JExecutor;
 
         public override Expression<Func<TD, object>> DefaultOrderBy()
         {
@@ -52,17 +57,39 @@ namespace White.Knight.Neo4J
                     key
                         .BuildKeySelectorExpression(KeyExpression());
 
-                var csvEntity =
-                    (await
-                        _csvLoader
-                            .ReadAsync(cancellationToken))
-                    .FirstOrDefault(selector.Compile());
+                var translationResult =
+                    _commandTranslator
+                        .Translate(command);
+
+                if (translationResult == null)
+                    throw new Exception("There was an error translating the Neo4j command.");
+
+                var idFieldName =
+                    ClassEx
+                        .ExtractPropertyInfo<TD>(KeyExpression())?
+                        .Name ??
+                    throw new Exception($"Could not retrieve key expression field from entity type {typeof(TD).Name}");
+
+                translationResult.CommandText =
+                    translationResult
+                        .CommandText
+                        .Replace(Constants.IdFieldPlaceholder, idFieldName);
+
+                var result =
+                    await
+                        _neo4JExecutor
+                            .RunAsync(
+                                translationResult.CommandText,
+                                translationResult.Parameters,
+                                cancellationToken
+                            );
 
                 Logger
                     .LogDebug("Retrieved single record with key [{key}] in {ms} ms", key,
                         Stopwatch.ElapsedMilliseconds);
 
-                return csvEntity;
+                //return csvEntity;
+                return default;
             }
             catch (Exception e)
             {
@@ -107,16 +134,22 @@ namespace White.Knight.Neo4J
                     key
                         .BuildKeySelectorExpression(KeyExpression());
 
-                var allCsvEntities =
-                    (await
-                        _csvLoader
-                            .ReadAsync(cancellationToken))
-                    .Where(o => !selector.Compile().Invoke(o))
-                    .ToList();
+                var commandQuery = @"
+                    CREATE (a:Person {name: $name, id: $id})
+                    CREATE (b:Person {name: $friendName})
+                    CREATE (a)-[:KNOWS]->(b)
+                    ";
+
+                var parameters = new Dictionary<string, string>
+                {
+                    { "id", Guid.NewGuid().ToString() },
+                    { "name", "Alice" },
+                    { "friendName", "David" }
+                };
 
                 await
-                    _csvLoader
-                        .WriteAsync(allCsvEntities, cancellationToken);
+                    _neo4JExecutor
+                        .UpsertAsync(commandQuery, parameters, cancellationToken);
 
                 Logger
                     .LogDebug("Deleted record with key [{key}] in {ms} ms", key, Stopwatch.ElapsedMilliseconds);
@@ -154,43 +187,49 @@ namespace White.Knight.Neo4J
                 Stopwatch
                     .Restart();
 
-                var selector =
-                    sourceEntity
-                        .BuildEntitySelectorExpression(KeyExpression());
+                entityToCommit =
+                    sourceEntity;
 
-                var allCsvEntities =
-                    (await
-                        _csvLoader
-                            .ReadAsync(cancellationToken))
-                    .ToList();
+                var entityName =
+                    typeof(TD)
+                        .Name;
 
-                var filteredCsvEntities =
-                    allCsvEntities
-                        .Where(o => !selector.Compile().Invoke(o))
+                var commandMappings =
+                    entityToCommit
+                        .BuildNeo4jCommandMapping()
                         .ToList();
 
-                var targetEntity =
-                    allCsvEntities
-                        .FirstOrDefault(o => selector.Compile().Invoke(o));
+                var commandParameterString =
+                    string
+                        .Join(
+                            ", ",
+                            commandMappings
+                                .Select(
+                                    o => $"{o.Item2}: ${o.Item1}")
+                        );
 
-                entityToCommit =
-                    sourceEntity
-                        .ApplyInclusionStrategy(
-                            targetEntity,
-                            fieldsToModify,
-                            fieldsToPreserve);
+                var commandText = $"MERGE (a:{entityName} {{ {commandParameterString} }}) RETURN a";
 
-                // re-add to the final list
-                filteredCsvEntities
-                    .Add(entityToCommit);
+                var parameters =
+                    commandMappings
+                        .ToDictionary(o => o.Item1, o => o.Item3);
 
-                await
-                    _csvLoader
-                        .WriteAsync(filteredCsvEntities, cancellationToken);
+                var result =
+                    await
+                        _neo4JExecutor
+                            .RunAsync(
+                                commandText,
+                                parameters,
+                                cancellationToken
+                            );
 
                 Logger
-                    .LogDebug("Upserted record of type [{type}] in {ms} ms", typeof(TD).Name,
-                        Stopwatch.ElapsedMilliseconds);
+                    .LogDebug(
+                        "Upserted {count} records of type [{type}] in {ms} ms",
+                        result.Count,
+                        typeof(TD).Name,
+                        Stopwatch.ElapsedMilliseconds
+                    );
             }
             catch (Exception e)
             {
@@ -204,6 +243,7 @@ namespace White.Knight.Neo4J
                 Stopwatch
                     .Stop();
             }
+
 
             return entityToCommit;
         }

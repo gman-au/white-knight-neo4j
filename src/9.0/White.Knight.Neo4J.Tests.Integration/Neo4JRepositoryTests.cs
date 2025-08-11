@@ -9,19 +9,19 @@ using Xunit.Abstractions;
 
 namespace White.Knight.Neo4J.Tests.Integration
 {
-    public class CsvRepositoryTests(ITestOutputHelper helper)
-        : AbstractedRepositoryTests(new CsvRepositoryTestContext(helper))
+    public class Neo4JRepositoryTests(ITestOutputHelper helper)
+        : AbstractedRepositoryTests(new Neo4JRepositoryTestContext(helper))
     {
         private static readonly Assembly RepositoryAssembly =
             Assembly
                 .GetAssembly(typeof(AddressRepository));
 
-        private class CsvRepositoryTestContext : RepositoryTestContextBase, IRepositoryTestContext
+        private class Neo4JRepositoryTestContext : RepositoryTestContextBase, IRepositoryTestContext
         {
-            public CsvRepositoryTestContext(ITestOutputHelper testOutputHelper)
+            public Neo4JRepositoryTestContext(ITestOutputHelper testOutputHelper)
             {
                 // specify csv harness
-                LoadTestConfiguration<CsvTestHarness>();
+                LoadTestConfiguration<Neo4JTestHarness>();
 
                 // service initialisation
                 ServiceCollection

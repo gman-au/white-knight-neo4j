@@ -31,19 +31,19 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All"/>
-        <PackageReference Include="CsvHelper" Version="33.1.0"/>
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.6"/>
         <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.6"/>
         <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.6"/>
-        <PackageReference Include="White.Knight.Injection.Abstractions" Version="9.0.14" />
+        <PackageReference Include="Neo4j.Driver" Version="5.28.3"/>
+        <PackageReference Include="White.Knight.Injection.Abstractions" Version="9.0.15.1-alpha" />
     </ItemGroup>
 
     <!-- Include referenced project outputs -->
     <ItemGroup>
-        <None Include="$(OutputPath)White.Knight.*.*.dll" Pack="true" PackagePath="lib\$(TargetFramework)" />
-        <None Include="$(OutputPath)White.Knight.*.dll" Pack="true" PackagePath="lib\$(TargetFramework)" />
-        <None Include="$(OutputPath)White.Knight.*.*.pdb" Pack="true" PackagePath="lib\$(TargetFramework)" />
-        <None Include="$(OutputPath)White.Knight.*.pdb" Pack="true" PackagePath="lib\$(TargetFramework)" />
+        <None Include="$(OutputPath)White.Knight.*.*.dll" Pack="true" PackagePath="lib\$(TargetFramework)"/>
+        <None Include="$(OutputPath)White.Knight.*.dll" Pack="true" PackagePath="lib\$(TargetFramework)"/>
+        <None Include="$(OutputPath)White.Knight.*.*.pdb" Pack="true" PackagePath="lib\$(TargetFramework)"/>
+        <None Include="$(OutputPath)White.Knight.*.pdb" Pack="true" PackagePath="lib\$(TargetFramework)"/>
     </ItemGroup>
 
 </Project>

@@ -10,6 +10,9 @@ namespace White.Knight.Neo4J.Tests.Integration.Repositories
     public class CustomerRepository(Neo4JRepositoryFeatures<Customer> repositoryFeatures)
         : Neo4JRepositoryBase<Customer>(repositoryFeatures)
     {
-        public override Expression<Func<Customer, object>> KeyExpression() => b => b.CustomerId;
+        public override Expression<Func<Customer, object>> KeyExpression()
+        {
+            return b => b.CustomerId;
+        }
     }
 }
