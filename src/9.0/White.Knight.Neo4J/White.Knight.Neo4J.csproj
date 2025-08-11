@@ -24,9 +24,9 @@
     </PropertyGroup>
 
     <PropertyGroup>
-        <PackageId>White.Knight.Csv</PackageId>
-        <Description>White Knight CSV Implmentation</Description>
-        <RepositoryUrl>https://github.com/gman-au/white-knight-csv</RepositoryUrl>
+        <PackageId>White.Knight.Neo4J</PackageId>
+        <Description>White Knight Neo4J Implmentation</Description>
+        <RepositoryUrl>https://github.com/gman-au/white-knight-neo4j</RepositoryUrl>
     </PropertyGroup>
 
     <ItemGroup>

@@ -6,15 +6,15 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using White.Knight.Abstractions.Extensions;
 using White.Knight.Abstractions.Fluent;
-using White.Knight.Csv.Options;
 using White.Knight.Interfaces;
 using White.Knight.Interfaces.Command;
+using White.Knight.Neo4J.Options;
 
-namespace White.Knight.Csv
+namespace White.Knight.Neo4J
 {
-    public abstract class CsvFileRepositoryBase<TD>(
-        CsvRepositoryFeatures<TD> repositoryFeatures)
-        : CsvFileKeylessRepositoryBase<TD>(repositoryFeatures), IRepository<TD>
+    public abstract class Neo4JRepositoryBase<TD>(
+        Neo4JRepositoryFeatures<TD> repositoryFeatures)
+        : Neo4JKeylessRepositoryBase<TD>(repositoryFeatures), IRepository<TD>
         where TD : new()
     {
         private readonly ICsvLoader<TD> _csvLoader = repositoryFeatures.CsvLoader;

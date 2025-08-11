@@ -1,8 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "White.Knight.Csv", "White.Knight.Csv\White.Knight.Csv.csproj", "{9F52A79C-7CE3-4E66-AB89-C3A8EE3C136D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "White.Knight.Neo4J", "White.Knight.Neo4J\White.Knight.Neo4J.csproj", "{9F52A79C-7CE3-4E66-AB89-C3A8EE3C136D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "White.Knight.Csv.Tests.Integration", "White.Knight.Csv.Tests.Integration\White.Knight.Csv.Tests.Integration.csproj", "{FF28998D-8F4D-4D85-8775-B2F3AE2BC7B9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "White.Knight.Neo4J.Tests.Integration", "White.Knight.Neo4J.Tests.Integration\White.Knight.Neo4J.Tests.Integration.csproj", "{FF28998D-8F4D-4D85-8775-B2F3AE2BC7B9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

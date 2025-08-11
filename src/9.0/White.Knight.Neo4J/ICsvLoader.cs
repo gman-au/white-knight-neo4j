@@ -3,7 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace White.Knight.Csv
+namespace White.Knight.Neo4J
 {
     public interface ICsvLoader<T>
     {

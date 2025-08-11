@@ -6,12 +6,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using CsvHelper;
 using Microsoft.Extensions.Options;
-using White.Knight.Csv.Options;
 using White.Knight.Domain.Exceptions;
+using White.Knight.Neo4J.Options;
 
-namespace White.Knight.Csv
+namespace White.Knight.Neo4J
 {
-    public class CsvLoader<TD>(IOptions<CsvRepositoryConfigurationOptions> optionsAccessor) : ICsvLoader<TD>
+    public class CsvLoader<TD>(IOptions<Neo4JRepositoryConfigurationOptions> optionsAccessor) : ICsvLoader<TD>
     {
         private readonly string _fileName =
             $"{typeof(TD).Name}.csv"

@@ -2,14 +2,14 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using White.Knight.Interfaces;
 
-namespace White.Knight.Csv.Options
+namespace White.Knight.Neo4J.Options
 {
-    public class CsvRepositoryFeatures<T>(
+    public class Neo4JRepositoryFeatures<T>(
         ICsvLoader<T> csvLoader,
         IClientSideEvaluationHandler clientSideEvaluationHandler,
         IRepositoryExceptionRethrower exceptionRethrower = null,
         ILoggerFactory loggerFactory = null)
-        : ICsvRepositoryFeatures<T>
+        : INeo4JRepositoryFeatures<T>
     {
         public ICsvLoader<T> CsvLoader { get; set; } = csvLoader;
 

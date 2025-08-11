@@ -24,7 +24,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\White.Knight.Csv\White.Knight.Csv.csproj" />
+      <ProjectReference Include="..\White.Knight.Neo4J\White.Knight.Neo4J.csproj" />
     </ItemGroup>
 
     <ItemGroup>

@@ -1,9 +1,9 @@
 ﻿using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using White.Knight.Csv.Injection;
-using White.Knight.Csv.Options;
-using White.Knight.Csv.Tests.Integration.Repositories;
+using White.Knight.Neo4J.Injection;
+using White.Knight.Neo4J.Options;
+using White.Knight.Neo4J.Tests.Integration.Repositories;
 using White.Knight.Domain.Enum;
 using White.Knight.Injection.Abstractions;
 using White.Knight.Tests.Abstractions;
@@ -12,7 +12,7 @@ using White.Knight.Tests.Abstractions.Injection;
 using White.Knight.Tests.Abstractions.Tests;
 using White.Knight.Tests.Domain;
 
-namespace White.Knight.Csv.Tests.Integration
+namespace White.Knight.Neo4J.Tests.Integration
 {
     public class CsvInjectionTests() : AbstractedInjectionTests(new CsvInjectionTestContext())
     {
@@ -25,26 +25,26 @@ namespace White.Knight.Csv.Tests.Integration
             public override void ArrangeImplementedServices()
             {
                 ServiceCollection
-                    .AddCsvRepositories(Configuration)
-                    .AddAttributedCsvRepositories(RepositoryAssembly);
+                    .AddNeo4JRepositories(Configuration)
+                    .AddAttributedNeo4JRepositories(RepositoryAssembly);
 
                 ServiceCollection
-                    .AddRepositoryFeatures<CsvRepositoryConfigurationOptions>(Configuration)
-                    .AddCsvRepositoryFeatures(Configuration);
+                    .AddRepositoryFeatures<Neo4JRepositoryConfigurationOptions>(Configuration)
+                    .AddNeo4JRepositoryFeatures(Configuration);
             }
 
             public override void ArrangeDefinedClientSideConfiguration()
             {
                 Configuration =
                     Configuration
-                        .ArrangeThrowOnClientSideEvaluation<CsvRepositoryConfigurationOptions>();
+                        .ArrangeThrowOnClientSideEvaluation<Neo4JRepositoryConfigurationOptions>();
             }
 
             public override void AssertLoggerFactoryResolved()
             {
                 var features =
                     Sut
-                        .GetRequiredService<CsvRepositoryFeatures<Address>>();
+                        .GetRequiredService<Neo4JRepositoryFeatures<Address>>();
 
                 Assert
                     .NotNull(features);
@@ -61,7 +61,7 @@ namespace White.Knight.Csv.Tests.Integration
             {
                 var options =
                     Sut
-                        .GetRequiredService<IOptions<CsvRepositoryConfigurationOptions>>();
+                        .GetRequiredService<IOptions<Neo4JRepositoryConfigurationOptions>>();
 
                 Assert.NotNull(options.Value);
 
@@ -72,7 +72,7 @@ namespace White.Knight.Csv.Tests.Integration
             {
                 var options =
                     Sut
-                        .GetRequiredService<IOptions<CsvRepositoryConfigurationOptions>>();
+                        .GetRequiredService<IOptions<Neo4JRepositoryConfigurationOptions>>();
 
                 Assert.NotNull(options.Value);
 

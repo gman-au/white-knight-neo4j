@@ -4,18 +4,18 @@ using System.IO;
 using System.Threading.Tasks;
 using CsvHelper;
 using Microsoft.Extensions.Options;
-using White.Knight.Csv.Options;
+using White.Knight.Neo4J.Options;
 using White.Knight.Tests.Abstractions;
 using White.Knight.Tests.Abstractions.Data;
 
-namespace White.Knight.Csv.Tests.Integration
+namespace White.Knight.Neo4J.Tests.Integration
 {
     public class CsvTestHarness(
         ITestDataGenerator testDataGenerator,
-        IOptions<CsvRepositoryConfigurationOptions> optionsAccessor)
+        IOptions<Neo4JRepositoryConfigurationOptions> optionsAccessor)
         : ITestHarness
     {
-        private readonly CsvRepositoryConfigurationOptions _options = optionsAccessor.Value;
+        private readonly Neo4JRepositoryConfigurationOptions _options = optionsAccessor.Value;
 
         public async Task<AbstractedRepositoryTestData> SetupRepositoryTestDataAsync()
         {

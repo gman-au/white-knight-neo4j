@@ -5,20 +5,20 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using White.Knight.Abstractions.Extensions;
-using White.Knight.Csv.Options;
 using White.Knight.Domain;
 using White.Knight.Interfaces;
 using White.Knight.Interfaces.Command;
+using White.Knight.Neo4J.Options;
 
-namespace White.Knight.Csv
+namespace White.Knight.Neo4J
 {
-    public abstract class CsvFileKeylessRepositoryBase<TD>(
-        CsvRepositoryFeatures<TD> repositoryFeatures) : IKeylessRepository<TD>
+    public abstract class Neo4JKeylessRepositoryBase<TD>(
+        Neo4JRepositoryFeatures<TD> repositoryFeatures) : IKeylessRepository<TD>
         where TD : new()
     {
         private readonly ICsvLoader<TD> _csvLoader = repositoryFeatures.CsvLoader;
         private readonly IRepositoryExceptionRethrower _exceptionRethrower = repositoryFeatures.ExceptionRethrower;
-        protected readonly ILogger Logger = repositoryFeatures.LoggerFactory.CreateLogger<CsvFileKeylessRepositoryBase<TD>>();
+        protected readonly ILogger Logger = repositoryFeatures.LoggerFactory.CreateLogger<Neo4JKeylessRepositoryBase<TD>>();
         protected readonly Stopwatch Stopwatch = new();
 
         public abstract Expression<Func<TD, object>> DefaultOrderBy();
