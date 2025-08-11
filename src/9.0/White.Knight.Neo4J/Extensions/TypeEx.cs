@@ -2,13 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using White.Knight.Abstractions.Extensions;
 
 namespace White.Knight.Neo4J.Extensions
 {
     public static class TypeEx
     {
-        public static IEnumerable<Tuple<string, string, string>> BuildNeo4jCommandMapping<T>(this T value)
+        public static IEnumerable<Tuple<string, string, string>> BuildNeo4JCommandMapping<T>(this T value)
         {
             var commandMappings = new List<Tuple<string, string, string>>();
 
@@ -21,7 +20,9 @@ namespace White.Knight.Neo4J.Extensions
 
                 var propertyName =
                     propertyInfo
-                        .GetMemberPropertyOrJsonAlias();
+                        .Name;
+                        // Using the below, the field cannot be retrieved when calling .AsObject<T>()
+                        //.GetMemberPropertyOrJsonAlias();
 
                 if (propertyValue != null)
                     commandMappings

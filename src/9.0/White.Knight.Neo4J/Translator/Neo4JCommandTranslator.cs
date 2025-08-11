@@ -52,6 +52,7 @@ namespace White.Knight.Neo4J.Translator
         public Neo4JTranslationResult Translate<TP>(IQueryCommand<TD, TP> command)
         {
             var specification = command.Specification;
+            // TODO: paging + sorting
             var pagingOptions = command.PagingOptions;
 
             try
@@ -62,9 +63,12 @@ namespace White.Knight.Neo4J.Translator
 
                 var query = Translate(specification);
 
+                if (!string.IsNullOrEmpty(query))
+                    query = $"WHERE {query}";
+
                 var commandText =
                     $"MATCH ({Constants.NodeAliasPlaceholder}:{entityName}) " +
-                    $"WHERE {query} RETURN {Constants.NodeAliasPlaceholder}";
+                    $"{query} RETURN {Constants.NodeAliasPlaceholder}";
 
                 var parameters = new Dictionary<string, string>();
 
@@ -113,23 +117,23 @@ namespace White.Knight.Neo4J.Translator
             var name = string.Empty;
             return spec switch
             {
-                SpecificationByAll<TD> => " * ",
+                SpecificationByAll<TD> => string.Empty,
                 SpecificationByNone<TD> => throw new UnparsableSpecificationException(),
                 SpecificationByEquals<TD, string> eq =>
-                    $"{Constants.NodeAliasPlaceholder}.{eq.Property.Body.GetPropertyExpressionPath(ref name)} = '{eq.Value}'",
+                    $"{Constants.NodeAliasPlaceholder}.{eq.Property.Body.GetPropertyExpressionPath(ref name, lookForAlias: false)} = '{eq.Value}'",
                 SpecificationByEquals<TD, int> eq =>
-                    $"{Constants.NodeAliasPlaceholder}.{eq.Property.Body.GetPropertyExpressionPath(ref name)} = {eq.Value}",
+                    $"{Constants.NodeAliasPlaceholder}.{eq.Property.Body.GetPropertyExpressionPath(ref name, lookForAlias: false)} = {eq.Value}",
                 SpecificationByEquals<TD, Guid> eq =>
-                    $"{Constants.NodeAliasPlaceholder}.{eq.Property.Body.GetPropertyExpressionPath(ref name)} = {eq.Value.ToString()}",
+                    $"{Constants.NodeAliasPlaceholder}.{eq.Property.Body.GetPropertyExpressionPath(ref name, lookForAlias: false)} = '{eq.Value.ToString()}'",
                 SpecificationByAnd<TD> and => $"({Translate(and.Left)} AND {Translate(and.Right)})",
                 SpecificationByOr<TD> and => $"({Translate(and.Left)} OR {Translate(and.Right)})",
                 SpecificationByNot<TD> => throw new UnparsableSpecificationException(),
                 SpecificationByTextStartsWith<TD> text =>
-                    $"{Constants.NodeAliasPlaceholder}.{text.Property.Body.GetPropertyExpressionPath(ref name)} = {text.Value}*",
+                    $"{Constants.NodeAliasPlaceholder}.{text.Property.Body.GetPropertyExpressionPath(ref name, lookForAlias: false)} STARTS WITH '{text.Value}'",
                 SpecificationByTextEndsWith<TD> text =>
-                    $"{Constants.NodeAliasPlaceholder}.{text.Property.Body.GetPropertyExpressionPath(ref name)} = {text.Value}",
+                    $"{Constants.NodeAliasPlaceholder}.{text.Property.Body.GetPropertyExpressionPath(ref name, lookForAlias: false)} ENDS WITH '{text.Value}'",
                 SpecificationByTextContains<TD> text =>
-                    $"{Constants.NodeAliasPlaceholder}.{text.Property.Body.GetPropertyExpressionPath(ref name)} = {text.Value}*",
+                    $"{Constants.NodeAliasPlaceholder}.{text.Property.Body.GetPropertyExpressionPath(ref name, lookForAlias: false)} CONTAINS '{text.Value}'",
                 SpecificationThatIsNotCompatible<TD> => throw new UnparsableSpecificationException(),
                 _ => throw new NotImplementedException()
             };

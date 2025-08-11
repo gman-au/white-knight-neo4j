@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,6 +11,7 @@ using White.Knight.Interfaces;
 using White.Knight.Interfaces.Command;
 using White.Knight.Neo4J.Options;
 using White.Knight.Neo4J.Translator;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace White.Knight.Neo4J
 {
@@ -51,16 +53,33 @@ namespace White.Knight.Neo4J
                         .Replace(Constants.ActionCommandPlaceholder, "RETURN")
                         .Replace(Constants.NodeAliasPlaceholder, "a");
 
-                var result =
+                var neo4JRecords =
                     await
                         _neo4JExecutor
-                            .RunAsync(
+                            .GetResultsAsync(
                                 translationResult.CommandText,
                                 translationResult.Parameters,
                                 cancellationToken
                             );
 
-                return new RepositoryResult<TP>();
+                var results =
+                    neo4JRecords;
+
+                return new RepositoryResult<TP>
+                {
+                    Records =
+                        results
+                            .Select(o =>
+                                command
+                                    .ProjectionOptions
+                                    .Projection
+                                    .Compile()
+                                    .Invoke(o)
+                            ),
+                    Count = 
+                        neo4JRecords
+                            .Count
+                };
             }
             catch (UnparsableSpecificationException)
             {

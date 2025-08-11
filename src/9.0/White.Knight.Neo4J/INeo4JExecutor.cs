@@ -1,13 +1,17 @@
 ﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Neo4j.Driver;
 
 namespace White.Knight.Neo4J
 {
     public interface INeo4JExecutor<TD>
     {
-        Task<IReadOnlyList<IRecord>> RunAsync(
+        Task<IReadOnlyList<TD>> GetResultsAsync(
+            string commandString,
+            IDictionary<string, string> parameters,
+            CancellationToken cancellationToken);
+
+        Task RunCommandAsync(
             string commandString,
             IDictionary<string, string> parameters,
             CancellationToken cancellationToken);

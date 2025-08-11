@@ -45,7 +45,7 @@ namespace White.Knight.Neo4J.Tests.Integration
             {
                 var commandMappings =
                     record
-                        .BuildNeo4jCommandMapping()
+                        .BuildNeo4JCommandMapping()
                         .ToList();
 
                 var commandParameterString =
@@ -65,7 +65,7 @@ namespace White.Knight.Neo4J.Tests.Integration
 
                 await
                     executor
-                        .RunAsync(
+                        .RunCommandAsync(
                             commandText,
                             parameters,
                             CancellationToken.None

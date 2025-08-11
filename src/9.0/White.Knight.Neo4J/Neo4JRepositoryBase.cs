@@ -74,7 +74,7 @@ namespace White.Knight.Neo4J
                 var result =
                     await
                         _neo4JExecutor
-                            .RunAsync(
+                            .GetResultsAsync(
                                 translationResult.CommandText,
                                 translationResult.Parameters,
                                 cancellationToken
@@ -84,6 +84,7 @@ namespace White.Knight.Neo4J
                     .LogDebug("Retrieved single record with key [{key}] in {ms} ms", key,
                         Stopwatch.ElapsedMilliseconds);
 
+                // TODO: fix
                 //return csvEntity;
                 return default;
             }
@@ -146,10 +147,11 @@ namespace White.Knight.Neo4J
                         .Replace(Constants.ActionCommandPlaceholder, "DELETE")
                         .Replace(Constants.NodeAliasPlaceholder, "a");
 
+                // TODO: fix
                 var result =
                     await
                         _neo4JExecutor
-                            .RunAsync(
+                            .GetResultsAsync(
                                 translationResult.CommandText,
                                 translationResult.Parameters,
                                 cancellationToken
@@ -200,7 +202,7 @@ namespace White.Knight.Neo4J
 
                 var commandMappings =
                     entityToCommit
-                        .BuildNeo4jCommandMapping()
+                        .BuildNeo4JCommandMapping()
                         .ToList();
 
                 var commandParameterString =
@@ -221,7 +223,7 @@ namespace White.Knight.Neo4J
                 var result =
                     await
                         _neo4JExecutor
-                            .RunAsync(
+                            .GetResultsAsync(
                                 commandText,
                                 parameters,
                                 cancellationToken
