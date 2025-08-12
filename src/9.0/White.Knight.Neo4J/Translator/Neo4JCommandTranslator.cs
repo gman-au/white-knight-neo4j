@@ -44,7 +44,7 @@ namespace White.Knight.Neo4J.Translator
 
             return new Neo4JTranslationResult
             {
-                CommandText = commandText,
+                QueryCommandText = commandText,
                 Parameters = parameters
             };
         }
@@ -65,12 +65,17 @@ namespace White.Knight.Neo4J.Translator
                 if (!string.IsNullOrEmpty(query))
                     query = $"WHERE {query}";
 
-                var commandText =
+                var queryCommandText =
                     $"MATCH ({Constants.NodeAliasPlaceholder}:{entityName}) " +
                     $"{query} " +
-                    $"{Constants.PagingPlaceholder} " +
                     $"RETURN {Constants.NodeAliasPlaceholder} " +
+                    $"{Constants.PagingPlaceholder} " +
                     $"{Constants.OrderByPlaceholder} ";
+
+                var countCommandText =
+                    $"MATCH ({Constants.NodeAliasPlaceholder}:{entityName}) " +
+                    $"{query} " +
+                    $"RETURN COUNT({Constants.NodeAliasPlaceholder}) ";
 
                 var parameters = new Dictionary<string, string>();
 
@@ -80,26 +85,30 @@ namespace White.Knight.Neo4J.Translator
                 var page = pagingOptions?.Page;
                 var pageSize = pagingOptions?.PageSize;
                 var sortDescending = pagingOptions?.Descending;
-                var sort =
-                    ClassEx
-                        .ExtractPropertyInfo<TD>(pagingOptions?.OrderBy);
 
                 var pagingString = string.Empty;
                 var orderByString = string.Empty;
-                if (pageSize.HasValue && page.HasValue) pagingString = $"LIMIT {pageSize.Value} SKIP {page.Value}";
+                if (pageSize.HasValue && page.HasValue) pagingString = $"SKIP {page.Value} LIMIT {pageSize.Value} ";
 
-                if (sort != null)
+                if (pagingOptions?.OrderBy != null)
+                {
+                    var sort =
+                        ClassEx
+                            .ExtractPropertyInfo<TD>(pagingOptions?.OrderBy);
+
                     orderByString = $"ORDER BY {Constants.CommonNodeAlias}.{sort.Name} " +
                                     $"{(sortDescending.GetValueOrDefault() ? "DESC" : string.Empty)}";
+                }
 
-                commandText =
-                    commandText
+                queryCommandText =
+                    queryCommandText
                         .Replace(Constants.PagingPlaceholder, pagingString)
                         .Replace(Constants.OrderByPlaceholder, orderByString);
 
                 return new Neo4JTranslationResult
                 {
-                    CommandText = commandText,
+                    QueryCommandText = queryCommandText,
+                    CountCommandText = countCommandText,
                     Parameters = parameters
                 };
             }
@@ -129,7 +138,7 @@ namespace White.Knight.Neo4J.Translator
 
             return new Neo4JTranslationResult
             {
-                CommandText = commandText,
+                QueryCommandText = commandText,
                 Parameters = parameters
             };
         }

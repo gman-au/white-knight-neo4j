@@ -67,9 +67,9 @@ namespace White.Knight.Neo4J
                         .Name ??
                     throw new Exception($"Could not retrieve key expression field from entity type {typeof(TD).Name}");
 
-                translationResult.CommandText =
+                translationResult.QueryCommandText =
                     translationResult
-                        .CommandText
+                        .QueryCommandText
                         .Replace(Constants.IdFieldPlaceholder, idFieldName)
                         .Replace(Constants.ActionCommandPlaceholder, "RETURN")
                         .Replace(Constants.NodeAliasPlaceholder, Constants.CommonNodeAlias);
@@ -78,11 +78,13 @@ namespace White.Knight.Neo4J
                     (await
                         _neo4JExecutor
                             .GetResultsAsync(
-                                translationResult.CommandText,
                                 translationResult.Parameters,
+                                translationResult.QueryCommandText,
+                                translationResult.CountCommandText,
                                 cancellationToken
                             )
                     )
+                    .Item1
                     .FirstOrDefault();
 
                 Logger
@@ -143,9 +145,9 @@ namespace White.Knight.Neo4J
                         .Name ??
                     throw new Exception($"Could not retrieve key expression field from entity type {typeof(TD).Name}");
 
-                translationResult.CommandText =
+                translationResult.QueryCommandText =
                     translationResult
-                        .CommandText
+                        .QueryCommandText
                         .Replace(Constants.IdFieldPlaceholder, idFieldName)
                         .Replace(Constants.ActionCommandPlaceholder, "DELETE")
                         .Replace(Constants.NodeAliasPlaceholder, Constants.CommonNodeAlias);
@@ -155,8 +157,9 @@ namespace White.Knight.Neo4J
                     await
                         _neo4JExecutor
                             .GetResultsAsync(
-                                translationResult.CommandText,
                                 translationResult.Parameters,
+                                translationResult.QueryCommandText,
+                                translationResult.CountCommandText,
                                 cancellationToken
                             );
 
@@ -227,15 +230,16 @@ namespace White.Knight.Neo4J
                     await
                         _neo4JExecutor
                             .GetResultsAsync(
-                                commandText,
                                 parameters,
+                                commandText,
+                                null,
                                 cancellationToken
                             );
 
                 Logger
                     .LogDebug(
                         "Upserted {count} records of type [{type}] in {ms} ms",
-                        result.Count,
+                        result.Item2,
                         typeof(TD).Name,
                         Stopwatch.ElapsedMilliseconds
                     );

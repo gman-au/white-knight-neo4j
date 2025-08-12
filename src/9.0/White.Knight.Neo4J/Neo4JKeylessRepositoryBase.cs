@@ -49,28 +49,31 @@ namespace White.Knight.Neo4J
                 if (translationResult == null)
                     throw new Exception("There was an error translating the Redis command.");
 
-                translationResult.CommandText =
+                translationResult.QueryCommandText =
                     translationResult
-                        .CommandText
+                        .QueryCommandText
                         .Replace(Constants.ActionCommandPlaceholder, "RETURN")
                         .Replace(Constants.NodeAliasPlaceholder, Constants.CommonNodeAlias);
 
-                var neo4JRecords =
+                translationResult.CountCommandText =
+                    translationResult
+                        .CountCommandText
+                        .Replace(Constants.NodeAliasPlaceholder, Constants.CommonNodeAlias);
+
+                var (records, recordCount) =
                     await
                         _neo4JExecutor
                             .GetResultsAsync(
-                                translationResult.CommandText,
                                 translationResult.Parameters,
+                                translationResult.QueryCommandText,
+                                translationResult.CountCommandText,
                                 cancellationToken
                             );
-
-                var results =
-                    neo4JRecords;
 
                 return new RepositoryResult<TP>
                 {
                     Records =
-                        results
+                        records
                             .Select(o =>
                                 command
                                     .ProjectionOptions
@@ -78,9 +81,7 @@ namespace White.Knight.Neo4J
                                     .Compile()
                                     .Invoke(o)
                             ),
-                    Count =
-                        neo4JRecords
-                            .Count
+                    Count = recordCount
                 };
             }
             catch (UnparsableSpecificationException)
@@ -97,10 +98,12 @@ namespace White.Knight.Neo4J
                     (await
                         _neo4JExecutor
                             .GetResultsAsync(
-                                commandText,
                                 new Dictionary<string, string>(),
+                                commandText,
+                                null,
                                 cancellationToken
                             ))
+                    .Item1
                     .AsQueryable();
 
                 return

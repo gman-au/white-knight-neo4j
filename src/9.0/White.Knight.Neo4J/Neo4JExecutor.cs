@@ -26,9 +26,10 @@ namespace White.Knight.Neo4J
 
         private readonly Neo4JRepositoryConfigurationOptions _options = optionsAccessor.Value;
 
-        public async Task<IReadOnlyList<TD>> GetResultsAsync(
-            string commandString,
+        public async Task<Tuple<IReadOnlyList<TD>, long>> GetResultsAsync(
             IDictionary<string, string> parameters,
+            string queryCommandString,
+            string countCommandString,
             CancellationToken cancellationToken)
         {
             await using var driver =
@@ -36,11 +37,27 @@ namespace White.Knight.Neo4J
                     connector
                         .GetDriverAsync(cancellationToken);
 
+            var count = (long?)null;
+
+            if (!string.IsNullOrWhiteSpace(countCommandString))
+            {
+                count =
+                    (await
+                        BuildExecutableQueryAsync(
+                            driver,
+                            countCommandString,
+                            new Dictionary<string, string>(),
+                            cancellationToken))
+                    .Result
+                    .Select(r => r[$"COUNT({Constants.CommonNodeAlias})"].As<long>())
+                    .FirstOrDefault();
+            }
+
             var result =
                 (await
                     BuildExecutableQueryAsync(
                         driver,
-                        commandString,
+                        queryCommandString,
                         parameters,
                         cancellationToken))
                 .Result
@@ -52,8 +69,13 @@ namespace White.Knight.Neo4J
                         .MapNode<TD>)
                     .ToList();
 
+            count ??= mappedNodes.Count;
+
             return
-                new ReadOnlyCollection<TD>(mappedNodes);
+                new Tuple<IReadOnlyList<TD>, long>(
+                    new ReadOnlyCollection<TD>(mappedNodes),
+                    count.Value
+                );
         }
 
         public async Task RunCommandAsync(
