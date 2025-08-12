@@ -10,6 +10,10 @@
 
         public const string SetterStringPlaceholder = "|FIELD_SETTERS|";
 
-        public const string WhereFilterPlaceholder = "|WHERE_FILTER|";
+        public const string OrderByPlaceholder = "|ORDER_BY|";
+
+        public const string PagingPlaceholder = "|PAGING|";
+
+        public const string CommonNodeAlias = "a";
     }
 }

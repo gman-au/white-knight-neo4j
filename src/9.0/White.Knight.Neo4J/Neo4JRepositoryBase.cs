@@ -51,6 +51,9 @@ namespace White.Knight.Neo4J
                 Stopwatch
                     .Restart();
 
+                key
+                    .BuildKeySelectorExpression(KeyExpression());
+
                 var translationResult =
                     _commandTranslator
                         .Translate(command);
@@ -69,24 +72,24 @@ namespace White.Knight.Neo4J
                         .CommandText
                         .Replace(Constants.IdFieldPlaceholder, idFieldName)
                         .Replace(Constants.ActionCommandPlaceholder, "RETURN")
-                        .Replace(Constants.NodeAliasPlaceholder, "a");
+                        .Replace(Constants.NodeAliasPlaceholder, Constants.CommonNodeAlias);
 
                 var result =
-                    await
+                    (await
                         _neo4JExecutor
                             .GetResultsAsync(
                                 translationResult.CommandText,
                                 translationResult.Parameters,
                                 cancellationToken
-                            );
+                            )
+                    )
+                    .FirstOrDefault();
 
                 Logger
                     .LogDebug("Retrieved single record with key [{key}] in {ms} ms", key,
                         Stopwatch.ElapsedMilliseconds);
 
-                // TODO: fix
-                //return csvEntity;
-                return default;
+                return result;
             }
             catch (Exception e)
             {
@@ -145,7 +148,7 @@ namespace White.Knight.Neo4J
                         .CommandText
                         .Replace(Constants.IdFieldPlaceholder, idFieldName)
                         .Replace(Constants.ActionCommandPlaceholder, "DELETE")
-                        .Replace(Constants.NodeAliasPlaceholder, "a");
+                        .Replace(Constants.NodeAliasPlaceholder, Constants.CommonNodeAlias);
 
                 // TODO: fix
                 var result =

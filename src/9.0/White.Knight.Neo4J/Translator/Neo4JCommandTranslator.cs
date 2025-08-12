@@ -52,7 +52,6 @@ namespace White.Knight.Neo4J.Translator
         public Neo4JTranslationResult Translate<TP>(IQueryCommand<TD, TP> command)
         {
             var specification = command.Specification;
-            // TODO: paging + sorting
             var pagingOptions = command.PagingOptions;
 
             try
@@ -68,12 +67,35 @@ namespace White.Knight.Neo4J.Translator
 
                 var commandText =
                     $"MATCH ({Constants.NodeAliasPlaceholder}:{entityName}) " +
-                    $"{query} RETURN {Constants.NodeAliasPlaceholder}";
+                    $"{query} " +
+                    $"{Constants.PagingPlaceholder} " +
+                    $"RETURN {Constants.NodeAliasPlaceholder} " +
+                    $"{Constants.OrderByPlaceholder} ";
 
                 var parameters = new Dictionary<string, string>();
 
                 _logger
                     .LogDebug("Translated Query: ({specification}) [{query}]", specification.GetType().Name, query);
+
+                var page = pagingOptions?.Page;
+                var pageSize = pagingOptions?.PageSize;
+                var sortDescending = pagingOptions?.Descending;
+                var sort =
+                    ClassEx
+                        .ExtractPropertyInfo<TD>(pagingOptions?.OrderBy);
+
+                var pagingString = string.Empty;
+                var orderByString = string.Empty;
+                if (pageSize.HasValue && page.HasValue) pagingString = $"LIMIT {pageSize.Value} SKIP {page.Value}";
+
+                if (sort != null)
+                    orderByString = $"ORDER BY {Constants.CommonNodeAlias}.{sort.Name} " +
+                                    $"{(sortDescending.GetValueOrDefault() ? "DESC" : string.Empty)}";
+
+                commandText =
+                    commandText
+                        .Replace(Constants.PagingPlaceholder, pagingString)
+                        .Replace(Constants.OrderByPlaceholder, orderByString);
 
                 return new Neo4JTranslationResult
                 {
@@ -117,17 +139,17 @@ namespace White.Knight.Neo4J.Translator
             var name = string.Empty;
             return spec switch
             {
-                SpecificationByAll<TD> => string.Empty,
-                SpecificationByNone<TD> => throw new UnparsableSpecificationException(),
+                SpecificationByAll<TD> => "1=1",
+                SpecificationByNone<TD> => "0=1",
                 SpecificationByEquals<TD, string> eq =>
                     $"{Constants.NodeAliasPlaceholder}.{eq.Property.Body.GetPropertyExpressionPath(ref name, lookForAlias: false)} = '{eq.Value}'",
                 SpecificationByEquals<TD, int> eq =>
-                    $"{Constants.NodeAliasPlaceholder}.{eq.Property.Body.GetPropertyExpressionPath(ref name, lookForAlias: false)} = {eq.Value}",
+                    $"{Constants.NodeAliasPlaceholder}.{eq.Property.Body.GetPropertyExpressionPath(ref name, lookForAlias: false)} = '{eq.Value}'",
                 SpecificationByEquals<TD, Guid> eq =>
                     $"{Constants.NodeAliasPlaceholder}.{eq.Property.Body.GetPropertyExpressionPath(ref name, lookForAlias: false)} = '{eq.Value.ToString()}'",
                 SpecificationByAnd<TD> and => $"({Translate(and.Left)} AND {Translate(and.Right)})",
                 SpecificationByOr<TD> and => $"({Translate(and.Left)} OR {Translate(and.Right)})",
-                SpecificationByNot<TD> => throw new UnparsableSpecificationException(),
+                SpecificationByNot<TD> not => $"NOT ({Translate(not.Spec)})",
                 SpecificationByTextStartsWith<TD> text =>
                     $"{Constants.NodeAliasPlaceholder}.{text.Property.Body.GetPropertyExpressionPath(ref name, lookForAlias: false)} STARTS WITH '{text.Value}'",
                 SpecificationByTextEndsWith<TD> text =>

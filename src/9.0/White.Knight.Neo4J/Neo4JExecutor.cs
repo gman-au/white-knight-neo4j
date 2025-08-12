@@ -10,6 +10,7 @@ using Microsoft.Extensions.Options;
 using Neo4j.Driver;
 using White.Knight.Domain.Exceptions;
 using White.Knight.Neo4J.Options;
+using White.Knight.Neo4J.Translator;
 
 namespace White.Knight.Neo4J
 {
@@ -42,7 +43,8 @@ namespace White.Knight.Neo4J
                         commandString,
                         parameters,
                         cancellationToken))
-                .Result;
+                .Result
+                .Select(r => r[Constants.CommonNodeAlias].As<INode>());
 
             var mappedNodes =
                 result
@@ -83,9 +85,6 @@ namespace White.Knight.Neo4J
                     .DbName ??
                 throw new MissingConfigurationException("Neo4JRepositoryConfigurationOptions -> DbName");
 
-            _logger
-                .LogDebug("Running Neo4J query: [{query}]", commandString);
-
             return
                 await
                     driver
@@ -97,10 +96,11 @@ namespace White.Knight.Neo4J
 
         private static class NodeMapper
         {
-            public static T MapNode<T>(IRecord record) where T : new()
+            // public static T MapNode<T>(IRecord record) where T : new()
+            public static T MapNode<T>(INode node) where T : new()
             {
                 var obj = new T();
-                var props = record.Values;
+                var props = node.Properties;
                 var type = typeof(T);
 
                 foreach (var prop in type.GetProperties())

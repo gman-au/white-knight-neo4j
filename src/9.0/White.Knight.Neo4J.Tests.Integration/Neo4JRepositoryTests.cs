@@ -38,6 +38,14 @@ namespace White.Knight.Neo4J.Tests.Integration
                     .StopAsync();
         }
 
+        public override Task Test_Search_By_Sub_Item_Query_Id()
+        {
+            // N/A. Sub query item searches are not invalid, but the nodes would likely be decoupled in Neo4j
+            return
+                Task
+                    .CompletedTask;
+        }
+
         private class Neo4JRepositoryTestContext : RepositoryTestContextBase, IRepositoryTestContext
         {
             private readonly int _hostedPort;

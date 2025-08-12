@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using White.Knight.Abstractions.Extensions;
 using White.Knight.Domain;
 using White.Knight.Domain.Exceptions;
 using White.Knight.Interfaces;
@@ -19,7 +21,7 @@ namespace White.Knight.Neo4J
         Neo4JRepositoryFeatures<TD> repositoryFeatures) : IKeylessRepository<TD>
         where TD : new()
     {
-        private readonly IClientSideEvaluationHandler _clientSideEvaluationHandler;
+        private readonly IClientSideEvaluationHandler _clientSideEvaluationHandler = repositoryFeatures.ClientSideEvaluationHandler;
         private readonly ICommandTranslator<TD, Neo4JTranslationResult> _commandTranslator = repositoryFeatures.CommandTranslator;
         private readonly IRepositoryExceptionRethrower _exceptionRethrower = repositoryFeatures.ExceptionRethrower;
         private readonly INeo4JExecutor<TD> _neo4JExecutor = repositoryFeatures.Neo4JExecutor;
@@ -51,7 +53,7 @@ namespace White.Knight.Neo4J
                     translationResult
                         .CommandText
                         .Replace(Constants.ActionCommandPlaceholder, "RETURN")
-                        .Replace(Constants.NodeAliasPlaceholder, "a");
+                        .Replace(Constants.NodeAliasPlaceholder, Constants.CommonNodeAlias);
 
                 var neo4JRecords =
                     await
@@ -76,7 +78,7 @@ namespace White.Knight.Neo4J
                                     .Compile()
                                     .Invoke(o)
                             ),
-                    Count = 
+                    Count =
                         neo4JRecords
                             .Count
                 };
@@ -86,17 +88,25 @@ namespace White.Knight.Neo4J
                 _clientSideEvaluationHandler
                     .Handle<TD>();
 
-                //TODO: get all and client-side filter
-                throw;/*
-                var queryable =
-                    await
-                        _redisCache
-                            .GetAllAsync(cancellationToken);
+                var entityName =
+                    typeof(TD)
+                        .Name;
+
+                var commandText = $"MATCH ({Constants.CommonNodeAlias}:{entityName}) RETURN {Constants.CommonNodeAlias}";
+                var neo4JRecords =
+                    (await
+                        _neo4JExecutor
+                            .GetResultsAsync(
+                                commandText,
+                                new Dictionary<string, string>(),
+                                cancellationToken
+                            ))
+                    .AsQueryable();
 
                 return
                     await
-                        queryable
-                            .ApplyCommandQueryAsync(command);*/
+                        neo4JRecords
+                            .ApplyCommandQueryAsync(command);
             }
             catch (Exception e)
             {
