@@ -199,12 +199,25 @@ namespace White.Knight.Neo4J
                 Stopwatch
                     .Restart();
 
-                entityToCommit =
-                    sourceEntity;
-
                 var entityName =
                     typeof(TD)
                         .Name;
+
+                var key =
+                    KeyExpression()
+                        .Compile()
+                        .Invoke(sourceEntity);
+
+                var targetEntity =
+                    await
+                        SingleRecordAsync(key, cancellationToken);
+
+                entityToCommit =
+                    sourceEntity
+                        .ApplyInclusionStrategy(
+                            targetEntity,
+                            fieldsToModify,
+                            fieldsToPreserve);
 
                 var commandMappings =
                     entityToCommit
