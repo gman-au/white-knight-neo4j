@@ -40,9 +40,11 @@ namespace White.Knight.Neo4J.Tests.Integration
         {
             return
                 new Neo4jBuilder()
-                    .WithImage("neo4j:5.4")
+                    .WithImage("neo4j:2025.03.0")
                     .WithName($"neo4j-test-harness-{Guid.NewGuid()}")
+                    .WithPortBinding(7474, 7474)
                     .WithPortBinding(hostedPort, 7687)
+                    .WithEnvironment("NEO4J_AUTH", "neo4j/password123")
                     .WithWaitStrategy(
                         Wait
                             .ForUnixContainer()
