@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using White.Knight.Abstractions.Extensions;
@@ -7,6 +9,8 @@ using White.Knight.Domain;
 using White.Knight.Domain.Exceptions;
 using White.Knight.Interfaces;
 using White.Knight.Interfaces.Command;
+using White.Knight.Neo4J.Navigations;
+using White.Knight.Neo4J.Relationships;
 
 namespace White.Knight.Neo4J.Translator
 {
@@ -21,18 +25,22 @@ namespace White.Knight.Neo4J.Translator
 
         public Neo4JTranslationResult Translate(ISingleRecordCommand<TD> command)
         {
+            var graphStrategy =
+                command.NavigationStrategy as GraphStrategy<TD> ??
+                throw new Exception("No graph strategy found.");
+
             var key =
                 command
                     .Key;
 
-            var entityName =
-                typeof(TD)
-                    .Name;
+            var aliasDictionary = BuildAliasDictionary(graphStrategy);
+
+            var (matchString, returnAliases) = BuildMatchString(graphStrategy, aliasDictionary);
 
             var commandText =
-                $"MATCH ({Constants.NodeAliasPlaceholder}:{entityName} " +
+                matchString +
                 $"{{ {Constants.IdFieldPlaceholder}: $id }}) " +
-                $"{Constants.ActionCommandPlaceholder} {Constants.NodeAliasPlaceholder}";
+                $"{Constants.ActionCommandPlaceholder} {returnAliases.Select(o => o)}";
 
             var parameters = new Dictionary<string, string>
             {
@@ -53,31 +61,43 @@ namespace White.Knight.Neo4J.Translator
         {
             var specification = command.Specification;
             var pagingOptions = command.PagingOptions;
+            var graphStrategy =
+                command.NavigationStrategy as GraphStrategy<TD> ??
+                throw new Exception("No graph strategy found.");
 
             try
             {
-                var entityName =
-                    typeof(TD)
-                        .Name;
+                var aliasDictionary = BuildAliasDictionary(graphStrategy);
 
-                var query = Translate(specification);
+                // Map primary
+                var primaryNavigation =
+                    graphStrategy
+                        .RelationshipNavigation;
+
+                var primaryAlias =
+                    aliasDictionary[primaryNavigation.GetHashCode()];
+
+                var query = Translate(specification, primaryAlias.ToString());
 
                 if (!string.IsNullOrEmpty(query))
                     query = $"WHERE {query}";
 
+                var (matchString, returnAliases) = BuildMatchString(graphStrategy, aliasDictionary);
+
                 var queryCommandText =
-                    $"MATCH ({Constants.NodeAliasPlaceholder}:{entityName}) " +
-                    $"{query} " +
-                    $"RETURN {Constants.NodeAliasPlaceholder} " +
+                    matchString +
+                    $" {query} " +
+                    $"RETURN {string.Join(',', returnAliases.Select(o => o))} " +
                     $"{Constants.PagingPlaceholder} " +
                     $"{Constants.OrderByPlaceholder} ";
 
                 var countCommandText =
-                    $"MATCH ({Constants.NodeAliasPlaceholder}:{entityName}) " +
-                    $"{query} " +
-                    $"RETURN COUNT({Constants.NodeAliasPlaceholder}) ";
+                    matchString +
+                    $" {query} " +
+                    $"RETURN COUNT({primaryAlias}) ";
 
-                var parameters = new Dictionary<string, string>();
+                var countCommandMap =
+                    $"COUNT({primaryAlias})";
 
                 _logger
                     .LogDebug("Translated Query: ({specification}) [{query}]", specification.GetType().Name, query);
@@ -96,7 +116,7 @@ namespace White.Knight.Neo4J.Translator
                         ClassEx
                             .ExtractPropertyInfo<TD>(pagingOptions?.OrderBy);
 
-                    orderByString = $"ORDER BY {Constants.CommonNodeAlias}.{sort.Name} " +
+                    orderByString = $"ORDER BY {primaryAlias}.{sort.Name} " +
                                     $"{(sortDescending.GetValueOrDefault() ? "DESC" : string.Empty)}";
                 }
 
@@ -109,7 +129,9 @@ namespace White.Knight.Neo4J.Translator
                 {
                     QueryCommandText = queryCommandText,
                     CountCommandText = countCommandText,
-                    Parameters = parameters
+                    CountCommandIndex = countCommandMap,
+                    Parameters = new Dictionary<string, string>(),
+                    AliasDictionary = aliasDictionary
                 };
             }
             catch (Exception e) when (e is NotImplementedException or UnparsableSpecificationException)
@@ -143,7 +165,82 @@ namespace White.Knight.Neo4J.Translator
             };
         }
 
-        private string Translate(Specification<TD> spec)
+        private static Dictionary<int, char> BuildAliasDictionary(
+            GraphStrategy<TD> graphStrategy)
+        {
+            var aliasCounter = 'a';
+
+            var completeList = new List<int>();
+
+            var currentNavigation = graphStrategy.RelationshipNavigation;
+
+            foreach (var navNext in currentNavigation.GetNavigationChain())
+                completeList
+                    .Add(navNext.GetHashCode());
+
+            // TODO: catch after 'z'
+
+            return
+                completeList
+                    .ToDictionary(o => o, _ => aliasCounter++);
+        }
+
+        private Tuple<string, IEnumerable<string>> BuildMatchString(GraphStrategy<TD> graphStrategy, Dictionary<int, char> aliasDictionary)
+        {
+            var matchString = new StringBuilder();
+            var returnAliases = new List<string>();
+
+            matchString
+                .Append("MATCH ");
+
+            using var enumerator =
+                graphStrategy
+                    .RelationshipNavigation
+                    .GetNavigationChain()
+                    .GetEnumerator();
+
+            if (enumerator.MoveNext())
+            {
+                var currentNavigation = enumerator.Current;
+                var currentAlias = aliasDictionary[currentNavigation.GetHashCode()];
+
+                returnAliases
+                    .Add(currentAlias.ToString());
+
+                matchString
+                    .Append($"({currentAlias}:{currentNavigation.DataType.Name})");
+
+                while (enumerator.MoveNext())
+                {
+                    var navigation = enumerator.Current;
+                    if (navigation == null) continue;
+
+                    var navigationAlias = aliasDictionary[navigation.GetHashCode()];
+                    var navigationEntityTypeName = navigation.DataType.Name;
+
+                    var relationshipType = currentNavigation.Relationship.Type;
+                    var relationshipAlias = $"{currentAlias}_{navigationAlias}";
+
+                    matchString
+                        .Append($"-[{relationshipAlias}:{relationshipType}]->({navigationAlias}:{navigationEntityTypeName})");
+
+                    returnAliases
+                        .Add(relationshipAlias);
+                    returnAliases
+                        .Add(navigationAlias.ToString());
+
+                    currentNavigation = navigation;
+                }
+            }
+
+            return new Tuple<string, IEnumerable<string>>(
+                matchString
+                    .ToString(),
+                returnAliases
+            );
+        }
+
+        private string Translate(Specification<TD> spec, string alias)
         {
             var name = string.Empty;
             return spec switch
@@ -151,20 +248,20 @@ namespace White.Knight.Neo4J.Translator
                 SpecificationByAll<TD> => "1=1",
                 SpecificationByNone<TD> => "0=1",
                 SpecificationByEquals<TD, string> eq =>
-                    $"{Constants.NodeAliasPlaceholder}.{eq.Property.Body.GetPropertyExpressionPath(ref name, lookForAlias: false)} = '{eq.Value}'",
+                    $"{alias}.{eq.Property.Body.GetPropertyExpressionPath(ref name, lookForAlias: false)} = '{eq.Value}'",
                 SpecificationByEquals<TD, int> eq =>
-                    $"{Constants.NodeAliasPlaceholder}.{eq.Property.Body.GetPropertyExpressionPath(ref name, lookForAlias: false)} = '{eq.Value}'",
+                    $"{alias}.{eq.Property.Body.GetPropertyExpressionPath(ref name, lookForAlias: false)} = '{eq.Value}'",
                 SpecificationByEquals<TD, Guid> eq =>
-                    $"{Constants.NodeAliasPlaceholder}.{eq.Property.Body.GetPropertyExpressionPath(ref name, lookForAlias: false)} = '{eq.Value.ToString()}'",
-                SpecificationByAnd<TD> and => $"({Translate(and.Left)} AND {Translate(and.Right)})",
-                SpecificationByOr<TD> and => $"({Translate(and.Left)} OR {Translate(and.Right)})",
-                SpecificationByNot<TD> not => $"NOT ({Translate(not.Spec)})",
+                    $"{alias}.{eq.Property.Body.GetPropertyExpressionPath(ref name, lookForAlias: false)} = '{eq.Value.ToString()}'",
+                SpecificationByAnd<TD> and => $"({Translate(and.Left, alias)} AND {Translate(and.Right, alias)})",
+                SpecificationByOr<TD> and => $"({Translate(and.Left, alias)} OR {Translate(and.Right, alias)})",
+                SpecificationByNot<TD> not => $"NOT ({Translate(not.Spec, alias)})",
                 SpecificationByTextStartsWith<TD> text =>
-                    $"{Constants.NodeAliasPlaceholder}.{text.Property.Body.GetPropertyExpressionPath(ref name, lookForAlias: false)} STARTS WITH '{text.Value}'",
+                    $"{alias}.{text.Property.Body.GetPropertyExpressionPath(ref name, lookForAlias: false)} STARTS WITH '{text.Value}'",
                 SpecificationByTextEndsWith<TD> text =>
-                    $"{Constants.NodeAliasPlaceholder}.{text.Property.Body.GetPropertyExpressionPath(ref name, lookForAlias: false)} ENDS WITH '{text.Value}'",
+                    $"{alias}.{text.Property.Body.GetPropertyExpressionPath(ref name, lookForAlias: false)} ENDS WITH '{text.Value}'",
                 SpecificationByTextContains<TD> text =>
-                    $"{Constants.NodeAliasPlaceholder}.{text.Property.Body.GetPropertyExpressionPath(ref name, lookForAlias: false)} CONTAINS '{text.Value}'",
+                    $"{alias}.{text.Property.Body.GetPropertyExpressionPath(ref name, lookForAlias: false)} CONTAINS '{text.Value}'",
                 SpecificationThatIsNotCompatible<TD> => throw new UnparsableSpecificationException(),
                 _ => throw new NotImplementedException()
             };

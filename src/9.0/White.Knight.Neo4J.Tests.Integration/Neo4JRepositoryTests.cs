@@ -3,12 +3,17 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
+using White.Knight.Abstractions.Fluent;
+using White.Knight.Neo4J.Extensions;
 using White.Knight.Neo4J.Injection;
+using White.Knight.Neo4J.Relationships;
 using White.Knight.Neo4J.Tests.Integration.Repositories;
 using White.Knight.Tests.Abstractions;
 using White.Knight.Tests.Abstractions.Extensions;
 using White.Knight.Tests.Abstractions.Repository;
 using White.Knight.Tests.Abstractions.Tests;
+using White.Knight.Tests.Domain;
+using White.Knight.Tests.Domain.Specifications;
 using Xunit.Abstractions;
 
 namespace White.Knight.Neo4J.Tests.Integration
@@ -46,6 +51,20 @@ namespace White.Knight.Neo4J.Tests.Integration
                     .CompletedTask;
         }
 
+        [Fact]
+        public async Task Test_Search_With_Relationship()
+        {
+            var context = (Neo4JRepositoryTestContext)GetContext();
+
+            await
+                context
+                    .ArrangeRepositoryDataAsync();
+
+            await
+                context
+                    .ActSearchWithRelationshipAsync();
+        }
+
         private class Neo4JRepositoryTestContext : RepositoryTestContextBase, IRepositoryTestContext
         {
             private readonly int _hostedPort;
@@ -55,6 +74,10 @@ namespace White.Knight.Neo4J.Tests.Integration
                 _hostedPort =
                     new Random()
                         .Next(10000, 11000);
+
+                // TODO: debug
+                _hostedPort = 7687;
+                // debug
 
                 // specify csv harness
                 LoadTestConfiguration<Neo4JTestHarness>();
@@ -80,6 +103,20 @@ namespace White.Knight.Neo4J.Tests.Integration
             public int GetHostedPort()
             {
                 return _hostedPort;
+            }
+
+            public async Task ActSearchWithRelationshipAsync()
+            {
+                Results =
+                    await
+                        Sut
+                            .QueryAsync
+                            (
+                                new CustomerSpecByCustomerNumber(200)
+                                    .ToQueryCommand()
+                                    .WithRelationshipStrategy(
+                                        new RelationshipNavigation<Customer, Order>("CREATED_ORDER"))
+                            );
             }
 
             private static IConfigurationRoot InterceptConfiguration(IConfigurationRoot existingConfiguration, int hostedPort)

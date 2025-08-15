@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,26 +9,26 @@ using Microsoft.Extensions.Options;
 using Neo4j.Driver;
 using White.Knight.Domain.Exceptions;
 using White.Knight.Neo4J.Options;
-using White.Knight.Neo4J.Translator;
 
 namespace White.Knight.Neo4J
 {
-    public class Neo4JExecutor<TD>(
+    public class Neo4JExecutor(
         INeo4JConnector connector,
         IOptions<Neo4JRepositoryConfigurationOptions> optionsAccessor,
         ILoggerFactory loggerFactory = null)
-        : INeo4JExecutor<TD> where TD : new()
+        : INeo4JExecutor
     {
-        private readonly ILogger<Neo4JExecutor<TD>> _logger =
+        private readonly ILogger<Neo4JExecutor> _logger =
             (loggerFactory ?? new NullLoggerFactory())
-            .CreateLogger<Neo4JExecutor<TD>>();
+            .CreateLogger<Neo4JExecutor>();
 
         private readonly Neo4JRepositoryConfigurationOptions _options = optionsAccessor.Value;
 
-        public async Task<Tuple<IReadOnlyList<TD>, long>> GetResultsAsync(
+        public async Task<Tuple<IReadOnlyList<IRecord>, long>> GetResultsAsync(
             IDictionary<string, string> parameters,
             string queryCommandString,
             string countCommandString,
+            string countCommandIndex,
             CancellationToken cancellationToken)
         {
             await using var driver =
@@ -40,7 +39,6 @@ namespace White.Knight.Neo4J
             var count = (long?)null;
 
             if (!string.IsNullOrWhiteSpace(countCommandString))
-            {
                 count =
                     (await
                         BuildExecutableQueryAsync(
@@ -49,38 +47,48 @@ namespace White.Knight.Neo4J
                             new Dictionary<string, string>(),
                             cancellationToken))
                     .Result
-                    .Select(r => r[$"COUNT({Constants.CommonNodeAlias})"].As<long>())
+                    .Select(r => r[countCommandIndex].As<long>())
                     .FirstOrDefault();
-            }
 
-            var result =
+            // debug
+
+            // queryCommandString = "MATCH (b:Customer)-[r:LIVES_AT|WORKS_AT]->(a:Address) RETURN a, b, r LIMIT 25";
+            var debuggerCommandString = "MATCH (customer:Customer)-[r:CREATED_ORDER]->(order:Order) RETURN customer, order, r LIMIT 25";
+            var debugger =
+                (await
+                    BuildExecutableQueryAsync(
+                        driver,
+                        debuggerCommandString,
+                        parameters,
+                        cancellationToken))
+                .Result;
+
+            /*var debuggerMappedNodes =
+                nodeMapper
+                    .Perform(debugger, graphStrategy);*/
+            //
+
+            var recordsList =
                 (await
                     BuildExecutableQueryAsync(
                         driver,
                         queryCommandString,
                         parameters,
                         cancellationToken))
-                .Result
-                .Select(r => r[Constants.CommonNodeAlias].As<INode>());
+                .Result;
 
-            var mappedNodes =
-                result
-                    .Select(NodeMapper
-                        .MapNode<TD>)
-                    .ToList();
-
-            count ??= mappedNodes.Count;
+            count ??= recordsList.Count;
 
             return
-                new Tuple<IReadOnlyList<TD>, long>(
-                    new ReadOnlyCollection<TD>(mappedNodes),
+                new Tuple<IReadOnlyList<IRecord>, long>(
+                    recordsList,
                     count.Value
                 );
         }
 
         public async Task RunCommandAsync(
-            string commandString,
             IDictionary<string, string> parameters,
+            string commandString,
             CancellationToken cancellationToken)
         {
             await using var driver =
@@ -114,34 +122,6 @@ namespace White.Knight.Neo4J
                         .WithParameters(parameters)
                         .WithConfig(new QueryConfig(database: dbName))
                         .ExecuteAsync(cancellationToken);
-        }
-
-        private static class NodeMapper
-        {
-            // public static T MapNode<T>(IRecord record) where T : new()
-            public static T MapNode<T>(INode node) where T : new()
-            {
-                var obj = new T();
-                var props = node.Properties;
-                var type = typeof(T);
-
-                foreach (var prop in type.GetProperties())
-                    if (props.TryGetValue(prop.Name, out var value))
-                    {
-                        // Handle type conversion based on property type
-                        if (prop.PropertyType == typeof(Guid))
-                            prop.SetValue(obj, Guid.Parse(value.ToString()));
-                        else if (prop.PropertyType == typeof(int))
-                            prop.SetValue(obj, int.Parse(value.ToString()));
-                        else if (prop.PropertyType == typeof(DateTime))
-                            prop.SetValue(obj, DateTime.Parse(value.ToString()));
-                        else
-                            prop.SetValue(obj, value);
-                    }
-
-                // If property doesn't exist in node, leave as default
-                return obj;
-            }
         }
     }
 }

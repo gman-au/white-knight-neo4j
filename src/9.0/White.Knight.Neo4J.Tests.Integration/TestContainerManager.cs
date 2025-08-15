@@ -11,18 +11,18 @@ namespace White.Knight.Neo4J.Tests.Integration
 
         public async Task StartAsync(int hostedPort)
         {
-            _neo4JContainer =
+            /*_neo4JContainer =
                 GetBuilder(hostedPort)
                     .Build();
 
             await
                 _neo4JContainer
-                    .StartAsync();
+                    .StartAsync();*/
         }
 
         public async Task StopAsync()
         {
-            if (_neo4JContainer != null)
+            /*if (_neo4JContainer != null)
             {
                 await
                     _neo4JContainer
@@ -33,7 +33,7 @@ namespace White.Knight.Neo4J.Tests.Integration
                         .DisposeAsync();
 
                 _neo4JContainer = null;
-            }
+            }*/
         }
 
         private static Neo4jBuilder GetBuilder(int hostedPort)

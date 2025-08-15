@@ -15,9 +15,9 @@ namespace White.Knight.Neo4J.Tests.Integration
 {
     public class Neo4JTestHarness(
         ITestDataGenerator testDataGenerator,
-        INeo4JExecutor<Customer> customerExecutor,
-        INeo4JExecutor<Address> addressExecutor,
-        INeo4JExecutor<Order> orderExecutor,
+        INeo4JExecutor customerExecutor,
+        INeo4JExecutor addressExecutor,
+        INeo4JExecutor orderExecutor,
         IOptions<Neo4JRepositoryConfigurationOptions> optionsAccessor)
         : ITestHarness
     {
@@ -55,7 +55,7 @@ namespace White.Knight.Neo4J.Tests.Integration
             return testData;
         }
 
-        private async Task WriteNodesAsync<T>(IEnumerable<T> records, INeo4JExecutor<T> executor)
+        private async Task WriteNodesAsync<T>(IEnumerable<T> records, INeo4JExecutor executor)
         {
             var entityName =
                 typeof(T)
@@ -86,8 +86,8 @@ namespace White.Knight.Neo4J.Tests.Integration
                 await
                     executor
                         .RunCommandAsync(
-                            commandText,
                             parameters,
+                            commandText,
                             CancellationToken.None
                         );
             }
@@ -99,7 +99,7 @@ namespace White.Knight.Neo4J.Tests.Integration
             string foreignKeyFieldName,
             string relationshipType,
             Expression<Func<TParent, Guid>> primaryKeyIdExpr,
-            INeo4JExecutor<TParent> executor)
+            INeo4JExecutor executor)
         {
             var parentTypeName = typeof(TParent).Name;
             var childTypeName = typeof(TChild).Name;
@@ -116,8 +116,8 @@ namespace White.Knight.Neo4J.Tests.Integration
                 await
                     executor
                         .RunCommandAsync(
-                            commandString,
                             new Dictionary<string, string>(),
+                            commandString,
                             CancellationToken.None
                         );
             }

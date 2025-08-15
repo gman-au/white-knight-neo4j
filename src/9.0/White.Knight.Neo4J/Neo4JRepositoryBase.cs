@@ -9,7 +9,10 @@ using White.Knight.Abstractions.Fluent;
 using White.Knight.Interfaces;
 using White.Knight.Interfaces.Command;
 using White.Knight.Neo4J.Extensions;
+using White.Knight.Neo4J.Mapping;
+using White.Knight.Neo4J.Navigations;
 using White.Knight.Neo4J.Options;
+using White.Knight.Neo4J.Relationships;
 using White.Knight.Neo4J.Translator;
 
 namespace White.Knight.Neo4J
@@ -20,7 +23,8 @@ namespace White.Knight.Neo4J
         where TD : new()
     {
         private readonly ICommandTranslator<TD, Neo4JTranslationResult> _commandTranslator = repositoryFeatures.CommandTranslator;
-        private readonly INeo4JExecutor<TD> _neo4JExecutor = repositoryFeatures.Neo4JExecutor;
+        private readonly INeo4JExecutor _neo4JExecutor = repositoryFeatures.Neo4JExecutor;
+        private readonly INodeMapper<TD> _nodeMapper = repositoryFeatures.NodeMapper;
 
         public override Expression<Func<TD, object>> DefaultOrderBy()
         {
@@ -51,6 +55,8 @@ namespace White.Knight.Neo4J
                 Stopwatch
                     .Restart();
 
+                command.NavigationStrategy ??= new GraphStrategy<TD>(RelationshipNavigation.Empty);
+
                 key
                     .BuildKeySelectorExpression(KeyExpression());
 
@@ -74,13 +80,14 @@ namespace White.Knight.Neo4J
                         .Replace(Constants.ActionCommandPlaceholder, "RETURN")
                         .Replace(Constants.NodeAliasPlaceholder, Constants.CommonNodeAlias);
 
-                var result =
+                var records =
                     (await
                         _neo4JExecutor
                             .GetResultsAsync(
                                 translationResult.Parameters,
                                 translationResult.QueryCommandText,
                                 translationResult.CountCommandText,
+                                translationResult.CountCommandIndex,
                                 cancellationToken
                             )
                     )
@@ -91,7 +98,15 @@ namespace White.Knight.Neo4J
                     .LogDebug("Retrieved single record with key [{key}] in {ms} ms", key,
                         Stopwatch.ElapsedMilliseconds);
 
-                return result;
+                var mappedRecords =
+                    _nodeMapper
+                        .Perform(
+                            command.NavigationStrategy as GraphStrategy<TD>,
+                            translationResult.AliasDictionary);
+
+                return
+                    mappedRecords
+                        .FirstOrDefault();
             }
             catch (Exception e)
             {
@@ -152,16 +167,13 @@ namespace White.Knight.Neo4J
                         .Replace(Constants.ActionCommandPlaceholder, "DELETE")
                         .Replace(Constants.NodeAliasPlaceholder, Constants.CommonNodeAlias);
 
-                // TODO: fix
-                var result =
-                    await
-                        _neo4JExecutor
-                            .GetResultsAsync(
-                                translationResult.Parameters,
-                                translationResult.QueryCommandText,
-                                translationResult.CountCommandText,
-                                cancellationToken
-                            );
+                await
+                    _neo4JExecutor
+                        .RunCommandAsync(
+                            translationResult.Parameters,
+                            translationResult.QueryCommandText,
+                            cancellationToken
+                        );
 
                 Logger
                     .LogDebug("Deleted record with key [{key}] in {ms} ms", key, Stopwatch.ElapsedMilliseconds);
@@ -246,6 +258,7 @@ namespace White.Knight.Neo4J
                                 parameters,
                                 commandText,
                                 null,
+                                null,
                                 cancellationToken
                             );
 
@@ -269,7 +282,6 @@ namespace White.Knight.Neo4J
                 Stopwatch
                     .Stop();
             }
-
 
             return entityToCommit;
         }

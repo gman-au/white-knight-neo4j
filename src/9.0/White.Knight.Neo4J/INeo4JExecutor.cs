@@ -2,21 +2,21 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Neo4j.Driver;
 
 namespace White.Knight.Neo4J
 {
-    public interface INeo4JExecutor<TD>
+    public interface INeo4JExecutor
     {
-        Task<Tuple<IReadOnlyList<TD>, long>> GetResultsAsync(
-            IDictionary<string, string> parameters,
+        Task<Tuple<IReadOnlyList<IRecord>, long>> GetResultsAsync(IDictionary<string, string> parameters,
             string queryCommandString,
             string countCommandString,
-            CancellationToken cancellationToken
-        );
+            string countCommandIndex,
+            CancellationToken cancellationToken);
 
         Task RunCommandAsync(
-            string commandString,
             IDictionary<string, string> parameters,
+            string commandString,
             CancellationToken cancellationToken
         );
     }

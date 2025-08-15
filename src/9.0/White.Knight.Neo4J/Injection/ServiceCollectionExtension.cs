@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using White.Knight.Injection.Abstractions;
 using White.Knight.Interfaces;
 using White.Knight.Neo4J.Attribute;
+using White.Knight.Neo4J.Mapping;
 using White.Knight.Neo4J.Options;
 using White.Knight.Neo4J.Translator;
 
@@ -26,7 +27,8 @@ namespace White.Knight.Neo4J.Injection
 
             services
                 .AddScoped(typeof(ICommandTranslator<,>), typeof(Neo4JCommandTranslator<,>))
-                .AddScoped(typeof(INeo4JExecutor<>), typeof(Neo4JExecutor<>));
+                .AddScoped(typeof(INeo4JExecutor), typeof(Neo4JExecutor))
+                .AddScoped(typeof(INodeMapper<>), typeof(NodeMapper<>));
 
             return services;
         }

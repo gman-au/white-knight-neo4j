@@ -11,7 +11,10 @@ using White.Knight.Domain;
 using White.Knight.Domain.Exceptions;
 using White.Knight.Interfaces;
 using White.Knight.Interfaces.Command;
+using White.Knight.Neo4J.Mapping;
+using White.Knight.Neo4J.Navigations;
 using White.Knight.Neo4J.Options;
+using White.Knight.Neo4J.Relationships;
 using White.Knight.Neo4J.Translator;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 
@@ -24,7 +27,8 @@ namespace White.Knight.Neo4J
         private readonly IClientSideEvaluationHandler _clientSideEvaluationHandler = repositoryFeatures.ClientSideEvaluationHandler;
         private readonly ICommandTranslator<TD, Neo4JTranslationResult> _commandTranslator = repositoryFeatures.CommandTranslator;
         private readonly IRepositoryExceptionRethrower _exceptionRethrower = repositoryFeatures.ExceptionRethrower;
-        private readonly INeo4JExecutor<TD> _neo4JExecutor = repositoryFeatures.Neo4JExecutor;
+        private readonly INeo4JExecutor _neo4JExecutor = repositoryFeatures.Neo4JExecutor;
+        private readonly INodeMapper<TD> _nodeMapper = repositoryFeatures.NodeMapper;
         protected readonly ILogger Logger = repositoryFeatures.LoggerFactory.CreateLogger<Neo4JKeylessRepositoryBase<TD>>();
         protected readonly Stopwatch Stopwatch = new();
 
@@ -42,6 +46,8 @@ namespace White.Knight.Neo4J
                 Stopwatch
                     .Restart();
 
+                command.NavigationStrategy ??= new GraphStrategy<TD>(RelationshipNavigation.Empty);
+
                 var translationResult =
                     _commandTranslator
                         .Translate(command);
@@ -52,8 +58,7 @@ namespace White.Knight.Neo4J
                 translationResult.QueryCommandText =
                     translationResult
                         .QueryCommandText
-                        .Replace(Constants.ActionCommandPlaceholder, "RETURN")
-                        .Replace(Constants.NodeAliasPlaceholder, Constants.CommonNodeAlias);
+                        .Replace(Constants.ActionCommandPlaceholder, "RETURN");
 
                 translationResult.CountCommandText =
                     translationResult
@@ -67,13 +72,22 @@ namespace White.Knight.Neo4J
                                 translationResult.Parameters,
                                 translationResult.QueryCommandText,
                                 translationResult.CountCommandText,
+                                translationResult.CountCommandIndex,
                                 cancellationToken
                             );
+
+                var mappedRecords =
+                    _nodeMapper
+                        .Perform(
+                            command.NavigationStrategy as GraphStrategy<TD>,
+                            translationResult.AliasDictionary,
+                            records.ToArray()
+                        );
 
                 return new RepositoryResult<TP>
                 {
                     Records =
-                        records
+                        mappedRecords
                             .Select(o =>
                                 command
                                     .ProjectionOptions
@@ -94,21 +108,30 @@ namespace White.Knight.Neo4J
                         .Name;
 
                 var commandText = $"MATCH ({Constants.CommonNodeAlias}:{entityName}) RETURN {Constants.CommonNodeAlias}";
-                var neo4JRecords =
+                var records =
                     (await
                         _neo4JExecutor
                             .GetResultsAsync(
                                 new Dictionary<string, string>(),
                                 commandText,
                                 null,
+                                null,
                                 cancellationToken
                             ))
-                    .Item1
-                    .AsQueryable();
+                    .Item1;
+
+                // TODO: send proper dictionary
+                var mappedRecords =
+                    _nodeMapper
+                        .Perform(
+                            command.NavigationStrategy as GraphStrategy<TD>,
+                            new Dictionary<int, char>(),
+                            records.ToArray())
+                        .AsQueryable();
 
                 return
                     await
-                        neo4JRecords
+                        mappedRecords
                             .ApplyCommandQueryAsync(command);
             }
             catch (Exception e)
