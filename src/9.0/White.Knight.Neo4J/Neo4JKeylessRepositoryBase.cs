@@ -46,7 +46,8 @@ namespace White.Knight.Neo4J
                 Stopwatch
                     .Restart();
 
-                command.NavigationStrategy ??= new GraphStrategy<TD>(RelationshipNavigation.Empty);
+                // command.NavigationStrategy ??= new GraphStrategy<TD>(RelationshipNavigation.Empty);
+                command.NavigationStrategy ??= new GraphStrategy<TD>(new RelationshipNavigation<TD>());
 
                 var translationResult =
                     _commandTranslator

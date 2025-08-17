@@ -96,7 +96,7 @@ namespace White.Knight.Neo4J.Translator
                     $" {query} " +
                     $"RETURN COUNT({primaryAlias}) ";
 
-                var countCommandMap =
+                var countCommandIndex =
                     $"COUNT({primaryAlias})";
 
                 _logger
@@ -129,7 +129,7 @@ namespace White.Knight.Neo4J.Translator
                 {
                     QueryCommandText = queryCommandText,
                     CountCommandText = countCommandText,
-                    CountCommandIndex = countCommandMap,
+                    CountCommandIndex = countCommandIndex,
                     Parameters = new Dictionary<string, string>(),
                     AliasDictionary = aliasDictionary
                 };

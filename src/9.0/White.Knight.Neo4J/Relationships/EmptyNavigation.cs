@@ -6,10 +6,7 @@ namespace White.Knight.Neo4J.Relationships
     {
         public Type DataType => null;
 
-        public Type TargetType => null;
-
         public Relationship Relationship { get; set; } = null;
-
 
         public IRelationshipNavigation Next() => null;
     }
