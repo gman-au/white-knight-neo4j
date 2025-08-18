@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using Neo4j.Driver;
 using White.Knight.Neo4J.Navigations;
 using White.Knight.Neo4J.Relationships;
 
 namespace White.Knight.Neo4J.Mapping
 {
-    public class NodeMapper<TD> : INodeMapper<TD> where TD : new()
+    public class NodeMapper<TD> : INodeMapper<TD> where TD : class, new()
     {
         public IEnumerable<TD> Perform(
             GraphStrategy<TD> graphStrategy,
@@ -37,11 +38,25 @@ namespace White.Knight.Neo4J.Mapping
                     .Distinct()
                     .ToList();
 
+            var mappedNodes = new List<TD>();
+
             while (enumerator.MoveNext())
             {
                 foreach (var primaryNode in primaryNodes)
                 {
+                    if (MapNode(primaryNavigation.DataType, primaryNode.Properties) is TD mappedNode)
+                    {
+                        mappedNodes
+                            .Add(mappedNode);
+                    }
+                    else
+                    {
+                        continue;
+                    }
+
                     var secondaryNavigation = enumerator.Current;
+
+                    if (secondaryNavigation == null) continue;
 
                     var secondaryAlias =
                         aliasDictionary[secondaryNavigation.GetHashCode()];
@@ -72,15 +87,42 @@ namespace White.Knight.Neo4J.Mapping
                         applicableSecondaries
                             .Select(o => MapNode(secondaryNavigation.DataType, o.Properties))
                             .ToList();
+
+                    // start
+                    var navigationProperties =
+                        primaryNavigation
+                            .GetType()
+                            .GetProperties();
+
+                    var setter =
+                        navigationProperties
+                            .FirstOrDefault(o => o.Name == "Setter");
+
+                    if (setter != null)
+                    {
+                        var setterValue = setter.GetValue(primaryNavigation);
+                        if (setterValue is LambdaExpression lambdaExpression)
+                        {
+                            if (lambdaExpression.Parameters.Count == 2 && lambdaExpression.ReturnType == typeof(void))
+                            {
+                                var typedParameters = lambdaExpression.Parameters;
+                                if (typedParameters[0].Type == primaryNavigation.DataType)
+                                    if (typedParameters[1].Type == secondaryNavigation.DataType)
+                                    {
+                                        foreach (var objectToAdd in objectsToAdd)
+                                        {
+                                            var setterMethod =
+                                                lambdaExpression
+                                                    .Compile()
+                                                    .DynamicInvoke(mappedNode, objectToAdd);
+                                        }
+                                    }
+                            }
+                        }
+                    }
+                    // end
                 }
             }
-
-            var mappedNodes =
-                primaryNodes
-                    .Select(o =>
-                        MapNode<TD>(o, o.Properties)
-                    )
-                    .ToList();
 
             return mappedNodes;
         }

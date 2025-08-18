@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 
 namespace White.Knight.Neo4J.Relationships
 {
@@ -36,10 +37,13 @@ namespace White.Knight.Neo4J.Relationships
     }
 
     public class RelationshipNavigation<T1, T2>(
-        string type)
+        string type,
+        Expression<Action<T1, T2>> setter)
         : RelationshipNavigationBase<T1>(type)
     {
         public override IRelationshipNavigation ChainedRelationship { get; set; } = new RelationshipNavigation<T2>();
+
+        public Expression<Action<T1, T2>> Setter { get; set; } = setter;
     }
 
     public class RelationshipNavigation<T1>() : RelationshipNavigationBase<T1>(null)

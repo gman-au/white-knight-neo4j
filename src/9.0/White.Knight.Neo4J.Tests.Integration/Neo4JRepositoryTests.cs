@@ -115,7 +115,9 @@ namespace White.Knight.Neo4J.Tests.Integration
                                 new CustomerSpecByCustomerNumber(200)
                                     .ToQueryCommand()
                                     .WithRelationshipStrategy(
-                                        new RelationshipNavigation<Customer, Order>("CREATED_ORDER"))
+                                        new RelationshipNavigation<Customer, Order>(
+                                            "CREATED_ORDER",
+                                            (c, o) => c.Orders.Add(o)))
                             );
             }
 
