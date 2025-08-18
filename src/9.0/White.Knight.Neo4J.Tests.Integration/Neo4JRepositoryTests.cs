@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using White.Knight.Abstractions.Fluent;
+using White.Knight.Domain;
 using White.Knight.Neo4J.Extensions;
 using White.Knight.Neo4J.Injection;
 using White.Knight.Neo4J.Relationships;
@@ -52,7 +53,7 @@ namespace White.Knight.Neo4J.Tests.Integration
         }
 
         [Fact]
-        public async Task Test_Search_With_Relationship()
+        public async Task Test_Search_With_Basic_Relationship()
         {
             var context = (Neo4JRepositoryTestContext)GetContext();
 
@@ -62,7 +63,21 @@ namespace White.Knight.Neo4J.Tests.Integration
 
             await
                 context
-                    .ActSearchWithRelationshipAsync();
+                    .ActSearchWithBasicRelationshipAsync();
+        }
+
+        [Fact]
+        public async Task Test_Search_With_Advanced_Relationship()
+        {
+            var context = (Neo4JRepositoryTestContext)GetContext();
+
+            await
+                context
+                    .ArrangeRepositoryDataAsync();
+
+            await
+                context
+                    .ActSearchWithAdvancedRelationshipAsync();
         }
 
         private class Neo4JRepositoryTestContext : RepositoryTestContextBase, IRepositoryTestContext
@@ -105,7 +120,7 @@ namespace White.Knight.Neo4J.Tests.Integration
                 return _hostedPort;
             }
 
-            public async Task ActSearchWithRelationshipAsync()
+            public async Task ActSearchWithBasicRelationshipAsync()
             {
                 Results =
                     await
@@ -118,6 +133,29 @@ namespace White.Knight.Neo4J.Tests.Integration
                                         new RelationshipNavigation<Customer, Order>(
                                             "CREATED_ORDER",
                                             (c, o) => c.Orders.Add(o)))
+                            );
+            }
+
+            public async Task ActSearchWithAdvancedRelationshipAsync()
+            {
+                Results =
+                    await
+                        Sut
+                            .QueryAsync
+                            (
+                                new SpecificationByAll<Customer>()
+                                    .ToQueryCommand()
+                                    .WithRelationshipStrategy(
+                                        new RelationshipNavigation<Customer, Order, Customer, Address>(
+                                            "CREATED_ORDER",
+                                            (c, o) => c.Orders.Add(o),
+                                            new RelationshipNavigation<Order, Customer, Address>(
+                                                "CREATED_BY",
+                                                (o, c) => o.Customer = c,
+                                                new RelationshipNavigation<Customer, Address>(
+                                                    "LIVES_AT",
+                                                    (c, a) => c.Addresses.Add(a))
+                                            )))
                             );
             }
 

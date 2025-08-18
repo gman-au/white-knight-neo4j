@@ -21,7 +21,7 @@ namespace White.Knight.Neo4J.Tests.Integration
         IOptions<Neo4JRepositoryConfigurationOptions> optionsAccessor)
         : ITestHarness
     {
-        private readonly Neo4JRepositoryConfigurationOptions _options = optionsAccessor.Value;
+        private const bool WriteTestHarnessData = false;//true;//
 
         public async Task<AbstractedRepositoryTestData> SetupRepositoryTestDataAsync()
         {
@@ -29,28 +29,33 @@ namespace White.Knight.Neo4J.Tests.Integration
                 testDataGenerator
                     .GenerateRepositoryTestData();
 
-            // put 'records' into tables i.e. write to CSV files in advance of the tests
-            await WriteNodesAsync(testData.Addresses, addressExecutor);
-            await WriteNodesAsync(testData.Customers, customerExecutor);
-            await WriteNodesAsync(testData.Orders, orderExecutor);
+            if (WriteTestHarnessData)
+            {
+                // put 'records' into tables i.e. write to CSV files in advance of the tests
+                await WriteNodesAsync(testData.Addresses, addressExecutor);
+                await WriteNodesAsync(testData.Customers, customerExecutor);
+                await WriteNodesAsync(testData.Orders, orderExecutor);
 
-            await WriteRelationshipsAsync<Customer, Address>(
-                testData.Customers,
-                "CustomerId",
-                "CustomerId",
-                "LIVES_AT",
-                o => o.CustomerId,
-                customerExecutor
-            );
+                await WriteRelationshipsAsync<Customer, Address>(
+                    testData.Customers,
+                    "CustomerId",
+                    "CustomerId",
+                    "LIVES_AT",
+                    o => o.CustomerId,
+                    customerExecutor,
+                    "LIVED_IN_BY"
+                );
 
-            await WriteRelationshipsAsync<Customer, Order>(
-                testData.Customers,
-                "CustomerId",
-                "CustomerId",
-                "CREATED_ORDER",
-                o => o.CustomerId,
-                customerExecutor
-            );
+                await WriteRelationshipsAsync<Customer, Order>(
+                    testData.Customers,
+                    "CustomerId",
+                    "CustomerId",
+                    "CREATED_ORDER",
+                    o => o.CustomerId,
+                    customerExecutor,
+                    "CREATED_BY"
+                );
+            }
 
             return testData;
         }
@@ -97,9 +102,10 @@ namespace White.Knight.Neo4J.Tests.Integration
             IEnumerable<TParent> parents,
             string primaryKeyFieldName,
             string foreignKeyFieldName,
-            string relationshipType,
+            string primaryRelationshipType,
             Expression<Func<TParent, Guid>> primaryKeyIdExpr,
-            INeo4JExecutor executor)
+            INeo4JExecutor executor,
+            string secondaryRelationshipType = null)
         {
             var parentTypeName = typeof(TParent).Name;
             var childTypeName = typeof(TChild).Name;
@@ -112,7 +118,11 @@ namespace White.Knight.Neo4J.Tests.Integration
 
                 var commandString = $"MATCH (a:{parentTypeName} {{{primaryKeyFieldName}: '{primaryKeyValue}'}}), " +
                                     $"(b:{childTypeName} {{{foreignKeyFieldName}: '{primaryKeyValue}'}}) " +
-                                    $"MERGE (a)-[:{relationshipType}]->(b)";
+                                    $"MERGE (a)-[:{primaryRelationshipType}]->(b) ";
+
+                if (!string.IsNullOrWhiteSpace(secondaryRelationshipType))
+                    commandString += $"MERGE (b)-[:{secondaryRelationshipType}]->(a)";
+
                 await
                     executor
                         .RunCommandAsync(

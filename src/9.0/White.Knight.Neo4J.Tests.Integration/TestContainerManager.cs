@@ -7,12 +7,12 @@ namespace White.Knight.Neo4J.Tests.Integration
 {
     public class TestContainerManager
     {
-        private readonly bool _useThese = true;
+        private const bool UseContainerManager = false;//true;//
         private Neo4jContainer _neo4JContainer;
 
         public async Task StartAsync(int hostedPort)
         {
-            if (_useThese)
+            if (UseContainerManager)
             {
                 _neo4JContainer =
                     GetBuilder(hostedPort)
@@ -26,7 +26,7 @@ namespace White.Knight.Neo4J.Tests.Integration
 
         public async Task StopAsync()
         {
-            if (_useThese)
+            if (UseContainerManager)
                 if (_neo4JContainer != null)
                 {
                     await

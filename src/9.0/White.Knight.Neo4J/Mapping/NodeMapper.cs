@@ -88,39 +88,8 @@ namespace White.Knight.Neo4J.Mapping
                             .Select(o => MapNode(secondaryNavigation.DataType, o.Properties))
                             .ToList();
 
-                    // start
-                    var navigationProperties =
-                        primaryNavigation
-                            .GetType()
-                            .GetProperties();
-
-                    var setter =
-                        navigationProperties
-                            .FirstOrDefault(o => o.Name == "Setter");
-
-                    if (setter != null)
-                    {
-                        var setterValue = setter.GetValue(primaryNavigation);
-                        if (setterValue is LambdaExpression lambdaExpression)
-                        {
-                            if (lambdaExpression.Parameters.Count == 2 && lambdaExpression.ReturnType == typeof(void))
-                            {
-                                var typedParameters = lambdaExpression.Parameters;
-                                if (typedParameters[0].Type == primaryNavigation.DataType)
-                                    if (typedParameters[1].Type == secondaryNavigation.DataType)
-                                    {
-                                        foreach (var objectToAdd in objectsToAdd)
-                                        {
-                                            var setterMethod =
-                                                lambdaExpression
-                                                    .Compile()
-                                                    .DynamicInvoke(mappedNode, objectToAdd);
-                                        }
-                                    }
-                            }
-                        }
-                    }
-                    // end
+                    primaryNavigation
+                        .InvokeDescendantSetters(mappedNode, objectsToAdd);
                 }
             }
 
