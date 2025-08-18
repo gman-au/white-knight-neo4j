@@ -58,11 +58,13 @@ namespace White.Knight.Neo4J
                 translationResult.QueryCommandText =
                     translationResult
                         .QueryCommandText
+                        .Replace(Constants.IdMatchingField, string.Empty)
                         .Replace(Constants.ActionCommandPlaceholder, "RETURN");
 
                 translationResult.CountCommandText =
                     translationResult
                         .CountCommandText
+                        .Replace(Constants.IdMatchingField, string.Empty)
                         .Replace(Constants.NodeAliasPlaceholder, Constants.CommonNodeAlias);
 
                 Logger
@@ -111,6 +113,7 @@ namespace White.Knight.Neo4J
                         .Name;
 
                 var commandText = $"MATCH ({Constants.CommonNodeAlias}:{entityName}) RETURN {Constants.CommonNodeAlias}";
+
                 var records =
                     (await
                         _neo4JExecutor
@@ -123,7 +126,6 @@ namespace White.Knight.Neo4J
                             ))
                     .Item1;
 
-                // TODO: send proper dictionary
                 var mappedRecords =
                     _nodeMapper
                         .Perform(
