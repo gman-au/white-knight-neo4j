@@ -12,8 +12,11 @@ namespace White.Knight.Neo4J.Mapping
         public IEnumerable<TD> Perform(
             GraphStrategy<TD> graphStrategy,
             Dictionary<int, char> aliasDictionary,
-            params IRecord[] records)
+            IEnumerable<IRecord> records)
         {
+            if (records?.FirstOrDefault() == null)
+                return [];
+
             using var enumerator =
                 graphStrategy
                     .RelationshipNavigation

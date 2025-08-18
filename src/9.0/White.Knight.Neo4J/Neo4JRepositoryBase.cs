@@ -73,9 +73,6 @@ namespace White.Knight.Neo4J
                         .Name ??
                     throw new Exception($"Could not retrieve key expression field from entity type {typeof(TD).Name}");
 
-                Logger
-                    .LogDebug("QueryCommandText: [{queryCommandText}]", translationResult.QueryCommandText);
-
                 translationResult.QueryCommandText =
                     translationResult
                         .QueryCommandText
@@ -83,6 +80,9 @@ namespace White.Knight.Neo4J
                         .Replace(Constants.ActionCommandPlaceholder, "RETURN")
                         .Replace(Constants.NodeAliasPlaceholder, Constants.CommonNodeAlias)
                         .Replace(Constants.IdMatchingField, string.Empty);
+
+                Logger
+                    .LogDebug("QueryCommandText: [{queryCommandText}]", translationResult.QueryCommandText);
 
                 var records =
                     (await
@@ -106,7 +106,8 @@ namespace White.Knight.Neo4J
                     _nodeMapper
                         .Perform(
                             command.NavigationStrategy as GraphStrategy<TD>,
-                            translationResult.AliasDictionary);
+                            translationResult.AliasDictionary,
+                            [records]);
 
                 return
                     mappedRecords
@@ -164,15 +165,15 @@ namespace White.Knight.Neo4J
                         .Name ??
                     throw new Exception($"Could not retrieve key expression field from entity type {typeof(TD).Name}");
 
-                Logger
-                    .LogDebug("QueryCommandText: [{queryCommandText}]", translationResult.QueryCommandText);
-
                 translationResult.QueryCommandText =
                     translationResult
                         .QueryCommandText
                         .Replace(Constants.IdFieldPlaceholder, idFieldName)
                         .Replace(Constants.ActionCommandPlaceholder, "DELETE")
                         .Replace(Constants.NodeAliasPlaceholder, Constants.CommonNodeAlias);
+
+                Logger
+                    .LogDebug("QueryCommandText: [{queryCommandText}]", translationResult.QueryCommandText);
 
                 await
                     _neo4JExecutor
