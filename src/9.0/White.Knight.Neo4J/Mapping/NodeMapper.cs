@@ -1,15 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Linq.Expressions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Neo4j.Driver;
 using White.Knight.Neo4J.Navigations;
 using White.Knight.Neo4J.Relationships;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace White.Knight.Neo4J.Mapping
 {
-    public class NodeMapper<TD> : INodeMapper<TD> where TD : class, new()
+    public class NodeMapper<TD>(ILoggerFactory loggerFactory = null) : INodeMapper<TD> where TD : class, new()
     {
+        private readonly ILogger _logger =
+            (loggerFactory ?? new NullLoggerFactory())
+            .CreateLogger<NodeMapper<TD>>();
+
         public IEnumerable<TD> Perform(
             GraphStrategy<TD> graphStrategy,
             Dictionary<int, char> aliasDictionary,
@@ -17,6 +23,10 @@ namespace White.Knight.Neo4J.Mapping
         {
             if (records?.FirstOrDefault() == null)
                 return [];
+
+            var allRecords =
+                records
+                    .ToList();
 
             using var enumerator =
                 graphStrategy
@@ -27,85 +37,103 @@ namespace White.Knight.Neo4J.Mapping
             if (!enumerator.MoveNext())
                 throw new Exception($"Could not map nodes of type {typeof(TD).Name}.");
 
-            // Start with primary navigation
-            var primaryNavigation = enumerator.Current;
+            // Start with last navigation
+            var currentNavigation = enumerator.Current;
 
-            var primaryAlias = aliasDictionary[primaryNavigation.GetHashCode()];
+            var currentAlias = aliasDictionary[currentNavigation.GetHashCode()];
 
-            var primaryNodes =
-                records
-                    .Select(r => r[primaryAlias.ToString()].As<INode>())
+            var currentNodes =
+                allRecords
+                    .Select(r => r[currentAlias.ToString()].As<INode>())
                     .Distinct()
                     .ToList();
 
             var mappedNodes = new List<TD>();
 
-            while (enumerator.MoveNext())
-            {
-                foreach (var primaryNode in primaryNodes)
+            foreach (var currentNode in currentNodes)
+                if (MapNode(currentNavigation.DataType, currentNode.Properties) is TD mappedNode)
                 {
-                    if (MapNode(primaryNavigation.DataType, primaryNode.Properties) is TD mappedNode)
-                    {
-                        mappedNodes
-                            .Add(mappedNode);
-                    }
-                    else
-                    {
-                        continue;
-                    }
+                    MapNodeAndChildren(
+                        mappedNode,
+                        currentNode.ElementId,
+                        currentNavigation,
+                        aliasDictionary,
+                        allRecords
+                    );
 
-                    var secondaryNavigation = enumerator.Current;
-
-                    if (secondaryNavigation == null) continue;
-
-                    var secondaryAlias =
-                        aliasDictionary[secondaryNavigation.GetHashCode()];
-
-                    var relationshipAlias = $"{primaryAlias}_{secondaryAlias}";
-
-                    var relationships =
-                        records
-                            .Select(r => r[relationshipAlias].As<IRelationship>())
-                            .ToList();
-
-                    var secondaryNodes =
-                        records
-                            .Select(r => r[secondaryAlias.ToString()].As<INode>())
-                            .ToList();
-
-                    var applicableRelationships =
-                        relationships
-                            .Where(o => o.StartNodeElementId == primaryNode.ElementId)
-                            .Select(o => o.EndNodeElementId)
-                            .ToList();
-
-                    var applicableSecondaries =
-                        secondaryNodes
-                            .Where(s => applicableRelationships.Contains(s.ElementId));
-
-                    var objectsToAdd =
-                        applicableSecondaries
-                            .Select(o => MapNode(secondaryNavigation.DataType, o.Properties))
-                            .ToList();
-
-                    primaryNavigation
-                        .InvokeDescendantSetters(mappedNode, objectsToAdd);
+                    mappedNodes
+                        .Add(mappedNode);
                 }
-            }
 
             return mappedNodes;
         }
 
-        private static T MapNode<T>(
-            INode node,
-            IReadOnlyDictionary<string, object> props
-        )
-            where T : new()
+        private void MapNodeAndChildren(
+            object currentElement,
+            string currentElementId,
+            IRelationshipNavigation currentNavigation,
+            Dictionary<int, char> aliasDictionary,
+            ICollection<IRecord> allRecords)
         {
-            var obj = new T();
-            var type = typeof(T);
+            try
+            {
+                if (allRecords?.FirstOrDefault() == null) return;
 
-            return (T)SetProps(type, obj, props);
+                if (currentNavigation == RelationshipNavigation.Empty) return;
+
+                var currentAlias = aliasDictionary[currentNavigation.GetHashCode()];
+
+                var nextNavigation = currentNavigation.Next();
+
+                var nextAlias = aliasDictionary[nextNavigation.GetHashCode()];
+
+                var nextNodes =
+                    allRecords
+                        .Select(r => r[nextAlias.ToString()].As<INode>())
+                        .ToList();
+
+                var relationshipAlias = $"{currentAlias}_{nextAlias}";
+
+                var currentRelationships =
+                    allRecords
+                        .Select(r => r[relationshipAlias].As<IRelationship>())
+                        .ToList();
+
+                var applicableRelationships =
+                    currentRelationships
+                        .Where(o => o.StartNodeElementId == currentElementId)
+                        .Select(o => o.EndNodeElementId)
+                        .ToList();
+
+                var applicableNextNodes =
+                    nextNodes
+                        .Where(s => applicableRelationships.Contains(s.ElementId))
+                        .ToList();
+
+                foreach (var applicableNextNode in applicableNextNodes)
+                {
+                    // Create
+                    var objectToAdd =
+                        MapNode(nextNavigation.DataType, applicableNextNode.Properties);
+
+                    // Link current to next
+                    currentNavigation
+                        .InvokeDescendantSetters(currentElement, objectToAdd);
+
+                    // Drill down to next and repeat
+                    MapNodeAndChildren(
+                        objectToAdd,
+                        applicableNextNode.ElementId,
+                        nextNavigation,
+                        aliasDictionary,
+                        allRecords);
+                }
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger
+                    .LogWarning("Could not find key in alias dictionary: {message}", ex.Message);
+            }
         }
 
         private static object MapNode(

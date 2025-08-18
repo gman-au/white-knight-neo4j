@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using White.Knight.Neo4J.Relationships;
 
@@ -10,7 +9,7 @@ namespace White.Knight.Neo4J.Mapping
         public static void InvokeDescendantSetters(
             this IRelationshipNavigation sourceNavigation,
             object primaryNode,
-            IEnumerable<object> relatedNodeDescendants)
+            params object[] relatedNodeDescendants)
         {
                 var navigationProperties =
                     sourceNavigation

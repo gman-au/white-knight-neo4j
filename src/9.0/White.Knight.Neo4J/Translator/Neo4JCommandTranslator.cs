@@ -234,6 +234,7 @@ namespace White.Knight.Neo4J.Translator
                         .Add(navigationAlias.ToString());
 
                     currentNavigation = navigation;
+                    currentAlias = navigationAlias;
                 }
             }
 
