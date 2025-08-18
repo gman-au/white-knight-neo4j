@@ -15,5 +15,7 @@
         public const string PagingPlaceholder = "|PAGING|";
 
         public const string CommonNodeAlias = "a";
+
+        public const string IdMatchingField = "|ID_MATCHING_FIELD|";
     }
 }

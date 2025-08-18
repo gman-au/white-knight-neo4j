@@ -7,33 +7,38 @@ namespace White.Knight.Neo4J.Tests.Integration
 {
     public class TestContainerManager
     {
+        private readonly bool _useThese = true;
         private Neo4jContainer _neo4JContainer;
 
         public async Task StartAsync(int hostedPort)
         {
-            /*_neo4JContainer =
-                GetBuilder(hostedPort)
-                    .Build();
+            if (_useThese)
+            {
+                _neo4JContainer =
+                    GetBuilder(hostedPort)
+                        .Build();
 
-            await
-                _neo4JContainer
-                    .StartAsync();*/
+                await
+                    _neo4JContainer
+                        .StartAsync();
+            }
         }
 
         public async Task StopAsync()
         {
-            /*if (_neo4JContainer != null)
-            {
-                await
-                    _neo4JContainer
-                        .StopAsync();
+            if (_useThese)
+                if (_neo4JContainer != null)
+                {
+                    await
+                        _neo4JContainer
+                            .StopAsync();
 
-                await
-                    _neo4JContainer
-                        .DisposeAsync();
+                    await
+                        _neo4JContainer
+                            .DisposeAsync();
 
-                _neo4JContainer = null;
-            }*/
+                    _neo4JContainer = null;
+                }
         }
 
         private static Neo4jBuilder GetBuilder(int hostedPort)

@@ -46,7 +46,6 @@ namespace White.Knight.Neo4J
                 Stopwatch
                     .Restart();
 
-                // command.NavigationStrategy ??= new GraphStrategy<TD>(RelationshipNavigation.Empty);
                 command.NavigationStrategy ??= new GraphStrategy<TD>(new RelationshipNavigation<TD>());
 
                 var translationResult =
@@ -65,6 +64,9 @@ namespace White.Knight.Neo4J
                     translationResult
                         .CountCommandText
                         .Replace(Constants.NodeAliasPlaceholder, Constants.CommonNodeAlias);
+
+                Logger
+                    .LogDebug("QueryCommandText: [{queryCommandText}]", translationResult.QueryCommandText);
 
                 var (records, recordCount) =
                     await

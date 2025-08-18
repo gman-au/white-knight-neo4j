@@ -27,7 +27,7 @@ namespace White.Knight.Neo4J.Translator
         {
             var graphStrategy =
                 command.NavigationStrategy as GraphStrategy<TD> ??
-                throw new Exception("No graph strategy found.");
+                new GraphStrategy<TD>(new RelationshipNavigation<TD>());
 
             var key =
                 command
@@ -37,23 +37,24 @@ namespace White.Knight.Neo4J.Translator
 
             var (matchString, returnAliases) = BuildMatchString(graphStrategy, aliasDictionary);
 
+            matchString =
+                matchString
+                    .Replace(Constants.IdMatchingField, $"{{ {Constants.IdFieldPlaceholder}: $id }} ");
+
             var commandText =
                 matchString +
-                $"{{ {Constants.IdFieldPlaceholder}: $id }}) " +
-                $"{Constants.ActionCommandPlaceholder} {returnAliases.Select(o => o)}";
+                $"{Constants.ActionCommandPlaceholder} {string.Join(',', returnAliases.Select(o => o))}";
 
             var parameters = new Dictionary<string, string>
             {
                 { "id", key.ToString() }
             };
 
-            _logger
-                .LogDebug("Translated Query: [{query}]", commandText);
-
             return new Neo4JTranslationResult
             {
                 QueryCommandText = commandText,
-                Parameters = parameters
+                Parameters = parameters,
+                AliasDictionary = aliasDictionary
             };
         }
 
@@ -63,7 +64,7 @@ namespace White.Knight.Neo4J.Translator
             var pagingOptions = command.PagingOptions;
             var graphStrategy =
                 command.NavigationStrategy as GraphStrategy<TD> ??
-                throw new Exception("No graph strategy found.");
+                new GraphStrategy<TD>(new RelationshipNavigation<TD>());
 
             try
             {
@@ -98,9 +99,6 @@ namespace White.Knight.Neo4J.Translator
 
                 var countCommandIndex =
                     $"COUNT({primaryAlias})";
-
-                _logger
-                    .LogDebug("Translated Query: ({specification}) [{query}]", specification.GetType().Name, query);
 
                 var page = pagingOptions?.Page;
                 var pageSize = pagingOptions?.PageSize;
@@ -145,6 +143,12 @@ namespace White.Knight.Neo4J.Translator
 
         public Neo4JTranslationResult Translate(IUpdateCommand<TD> command)
         {
+            var graphStrategy =
+                command.NavigationStrategy as GraphStrategy<TD> ??
+                new GraphStrategy<TD>(new RelationshipNavigation<TD>());
+
+            var aliasDictionary = BuildAliasDictionary(graphStrategy);
+
             var entityName =
                 typeof(TD)
                     .Name;
@@ -155,13 +159,11 @@ namespace White.Knight.Neo4J.Translator
 
             var parameters = new Dictionary<string, string>();
 
-            _logger
-                .LogDebug("Translated Query: [{query}]", commandText);
-
             return new Neo4JTranslationResult
             {
                 QueryCommandText = commandText,
-                Parameters = parameters
+                Parameters = parameters,
+                AliasDictionary = aliasDictionary
             };
         }
 
@@ -208,7 +210,9 @@ namespace White.Knight.Neo4J.Translator
                     .Add(currentAlias.ToString());
 
                 matchString
-                    .Append($"({currentAlias}:{currentNavigation.DataType.Name})");
+                    .Append($"({currentAlias}:{currentNavigation.DataType.Name} ")
+                    .Append(Constants.IdMatchingField)
+                    .Append(") ");
 
                 while (enumerator.MoveNext())
                 {

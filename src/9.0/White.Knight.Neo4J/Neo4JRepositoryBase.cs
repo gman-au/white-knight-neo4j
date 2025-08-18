@@ -55,7 +55,7 @@ namespace White.Knight.Neo4J
                 Stopwatch
                     .Restart();
 
-                command.NavigationStrategy ??= new GraphStrategy<TD>(RelationshipNavigation.Empty);
+                command.NavigationStrategy ??= new GraphStrategy<TD>(new RelationshipNavigation<TD>());
 
                 key
                     .BuildKeySelectorExpression(KeyExpression());
@@ -73,12 +73,16 @@ namespace White.Knight.Neo4J
                         .Name ??
                     throw new Exception($"Could not retrieve key expression field from entity type {typeof(TD).Name}");
 
+                Logger
+                    .LogDebug("QueryCommandText: [{queryCommandText}]", translationResult.QueryCommandText);
+
                 translationResult.QueryCommandText =
                     translationResult
                         .QueryCommandText
                         .Replace(Constants.IdFieldPlaceholder, idFieldName)
                         .Replace(Constants.ActionCommandPlaceholder, "RETURN")
-                        .Replace(Constants.NodeAliasPlaceholder, Constants.CommonNodeAlias);
+                        .Replace(Constants.NodeAliasPlaceholder, Constants.CommonNodeAlias)
+                        .Replace(Constants.IdMatchingField, string.Empty);
 
                 var records =
                     (await
@@ -159,6 +163,9 @@ namespace White.Knight.Neo4J
                         .ExtractPropertyInfo<TD>(KeyExpression())?
                         .Name ??
                     throw new Exception($"Could not retrieve key expression field from entity type {typeof(TD).Name}");
+
+                Logger
+                    .LogDebug("QueryCommandText: [{queryCommandText}]", translationResult.QueryCommandText);
 
                 translationResult.QueryCommandText =
                     translationResult
