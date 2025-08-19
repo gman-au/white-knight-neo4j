@@ -12,7 +12,7 @@ using Xunit.Abstractions;
 namespace White.Knight.Neo4J.Tests.Integration
 {
     public class Neo4JSpecificationTests(ITestOutputHelper helper)
-        : AbstractedSpecificationTests(new InMemorySpecificationTestContext(helper))
+        : AbstractedSpecificationTests(new Neo4JSpecificationTestContext(helper))
     {
         private static readonly Assembly SpecAssembly =
             Assembly
@@ -22,9 +22,33 @@ namespace White.Knight.Neo4J.Tests.Integration
             Assembly
                 .GetAssembly(typeof(AddressRepository));
 
-        private class InMemorySpecificationTestContext : SpecificationTestContextBase<Neo4JTranslationResult>, ISpecificationTestContext
+        [Fact]
+        public override void Throws_untransmutable_specification()
         {
-            public InMemorySpecificationTestContext(ITestOutputHelper testOutputHelper)
+            var context = (Neo4JSpecificationTestContext)GetContext();
+
+            context
+                .ActVerifyUntransmutableSpec();
+
+            context
+                .AssertClientSideEvaluationWasForced();
+        }
+
+        [Fact]
+        public override void Throws_untransmutable_nested_specification()
+        {
+            var context = (Neo4JSpecificationTestContext)GetContext();
+
+            context
+                .ActVerifyNestedUntransmutableSpec();
+
+            context
+                .AssertClientSideEvaluationWasForced();
+        }
+
+        private class Neo4JSpecificationTestContext : SpecificationTestContextBase<Neo4JTranslationResult>, ISpecificationTestContext
+        {
+            public Neo4JSpecificationTestContext(ITestOutputHelper testOutputHelper)
             {
                 SpecificationAssembly = SpecAssembly;
 
@@ -44,6 +68,14 @@ namespace White.Knight.Neo4J.Tests.Integration
                     .AddNeo4JRepositoryFeatures(Configuration);
 
                 LoadServiceProvider();
+            }
+
+            public void AssertClientSideEvaluationWasForced()
+            {
+                var result = Result as Neo4JTranslationResult;
+
+                Assert.NotNull(result);
+                Assert.True(result.ForcedClientSideEvaluation);
             }
         }
     }

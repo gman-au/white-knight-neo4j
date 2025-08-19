@@ -7,7 +7,7 @@ namespace White.Knight.Neo4J.Tests.Integration
 {
     public class TestContainerManager
     {
-        private const bool UseContainerManager = false;//true;//
+        private const bool UseContainerManager = true;
         private Neo4jContainer _neo4JContainer;
 
         public async Task StartAsync(int hostedPort)

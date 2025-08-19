@@ -21,7 +21,7 @@ namespace White.Knight.Neo4J.Tests.Integration
         IOptions<Neo4JRepositoryConfigurationOptions> optionsAccessor)
         : ITestHarness
     {
-        private const bool WriteTestHarnessData = false;//true;//
+        private const bool WriteTestHarnessData = true;
 
         public async Task<AbstractedRepositoryTestData> SetupRepositoryTestDataAsync()
         {
@@ -31,7 +31,7 @@ namespace White.Knight.Neo4J.Tests.Integration
 
             if (WriteTestHarnessData)
             {
-                // put 'records' into tables i.e. write to CSV files in advance of the tests
+                // put 'records' into tables i.e. write to Neo4j DB in advance of the tests
                 await WriteNodesAsync(testData.Addresses, addressExecutor);
                 await WriteNodesAsync(testData.Customers, customerExecutor);
                 await WriteNodesAsync(testData.Orders, orderExecutor);

@@ -14,7 +14,7 @@
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0"/>
         <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.6"/>
         <PackageReference Include="Testcontainers.Neo4j" Version="4.6.0" />
-        <PackageReference Include="White.Knight.Tests.Abstractions" Version="9.0.15.8-alpha"/>
+        <PackageReference Include="White.Knight.Tests.Abstractions" Version="9.0.15.10-alpha"/>
         <PackageReference Include="xunit" Version="2.5.3"/>
         <PackageReference Include="Xunit.Extensions.Logging" Version="1.1.0"/>
         <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3"/>

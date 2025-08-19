@@ -169,7 +169,7 @@ namespace White.Knight.Neo4J
                     translationResult
                         .QueryCommandText
                         .Replace(Constants.IdFieldPlaceholder, idFieldName)
-                        .Replace(Constants.ActionCommandPlaceholder, "DELETE")
+                        .Replace(Constants.ActionCommandPlaceholder, "DETACH DELETE")
                         .Replace(Constants.NodeAliasPlaceholder, Constants.CommonNodeAlias);
 
                 Logger

@@ -14,13 +14,13 @@ using White.Knight.Tests.Domain;
 
 namespace White.Knight.Neo4J.Tests.Integration
 {
-    public class Neo4JInjectionTests() : AbstractedInjectionTests(new CsvInjectionTestContext())
+    public class Neo4JInjectionTests() : AbstractedInjectionTests(new Neo4JInjectionTestContext())
     {
         private static readonly Assembly RepositoryAssembly =
             Assembly
                 .GetAssembly(typeof(AddressRepository));
 
-        private class CsvInjectionTestContext : InjectionTestContextBase, IInjectionTestContext
+        private class Neo4JInjectionTestContext : InjectionTestContextBase, IInjectionTestContext
         {
             public override void ArrangeImplementedServices()
             {
