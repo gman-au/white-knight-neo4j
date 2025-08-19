@@ -8,7 +8,8 @@ namespace White.Knight.Neo4J
 {
     public interface INeo4JExecutor
     {
-        Task<Tuple<IReadOnlyList<IRecord>, long>> GetResultsAsync(IDictionary<string, string> parameters,
+        Task<Tuple<IReadOnlyList<IRecord>, long>> GetResultsAsync(
+            IDictionary<string, string> parameters,
             string queryCommandString,
             string countCommandString,
             string countCommandIndex,

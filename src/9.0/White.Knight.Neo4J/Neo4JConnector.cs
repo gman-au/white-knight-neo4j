@@ -7,14 +7,9 @@ using White.Knight.Neo4J.Options;
 
 namespace White.Knight.Neo4J
 {
-    public class Neo4JConnector : INeo4JConnector
+    public class Neo4JConnector(IOptions<Neo4JRepositoryConfigurationOptions> optionsAccessor) : INeo4JConnector
     {
-        private readonly Neo4JRepositoryConfigurationOptions _options;
-
-        public Neo4JConnector(IOptions<Neo4JRepositoryConfigurationOptions> optionsAccessor)
-        {
-            _options = optionsAccessor.Value;
-        }
+        private readonly Neo4JRepositoryConfigurationOptions _options = optionsAccessor.Value;
 
         public async Task<IDriver> GetDriverAsync(CancellationToken cancellationToken)
         {

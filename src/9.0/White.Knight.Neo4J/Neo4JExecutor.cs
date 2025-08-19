@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Neo4j.Driver;
 using White.Knight.Domain.Exceptions;
@@ -14,14 +12,10 @@ namespace White.Knight.Neo4J
 {
     public class Neo4JExecutor(
         INeo4JConnector connector,
-        IOptions<Neo4JRepositoryConfigurationOptions> optionsAccessor,
-        ILoggerFactory loggerFactory = null)
+        IOptions<Neo4JRepositoryConfigurationOptions> optionsAccessor
+    )
         : INeo4JExecutor
     {
-        private readonly ILogger<Neo4JExecutor> _logger =
-            (loggerFactory ?? new NullLoggerFactory())
-            .CreateLogger<Neo4JExecutor>();
-
         private readonly Neo4JRepositoryConfigurationOptions _options = optionsAccessor.Value;
 
         public async Task<Tuple<IReadOnlyList<IRecord>, long>> GetResultsAsync(
@@ -49,24 +43,6 @@ namespace White.Knight.Neo4J
                     .Result
                     .Select(r => r[countCommandIndex].As<long>())
                     .FirstOrDefault();
-
-            // debug
-
-            // queryCommandString = "MATCH (b:Customer)-[r:LIVES_AT|WORKS_AT]->(a:Address) RETURN a, b, r LIMIT 25";
-            var debuggerCommandString = "MATCH (customer:Customer)-[r:CREATED_ORDER]->(order:Order) RETURN customer, order, r LIMIT 25";
-            var debugger =
-                (await
-                    BuildExecutableQueryAsync(
-                        driver,
-                        debuggerCommandString,
-                        parameters,
-                        cancellationToken))
-                .Result;
-
-            /*var debuggerMappedNodes =
-                nodeMapper
-                    .Perform(debugger, graphStrategy);*/
-            //
 
             var recordsList =
                 (await
