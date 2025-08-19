@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using White.Knight.Interfaces;
@@ -13,12 +12,8 @@ namespace White.Knight.Neo4J.Navigations
 
         public Expression<Func<IQueryable<T>, IQueryable<T>>> GetStrategy()
         {
-            throw new NotImplementedException();
-        }
-
-        public IEnumerable<string> GetPaths()
-        {
-            throw new NotImplementedException();
+            // TODO: translate IRelationshipNavigation into IQueryable expression
+            return o => o;
         }
     }
 }

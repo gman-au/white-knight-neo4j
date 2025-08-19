@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using White.Knight.Abstractions.Extensions;
 using White.Knight.Domain;
 using White.Knight.Domain.Exceptions;
+using White.Knight.Domain.Options;
 using White.Knight.Interfaces;
 using White.Knight.Interfaces.Command;
 using White.Knight.Neo4J.Navigations;
@@ -66,10 +67,10 @@ namespace White.Knight.Neo4J.Translator
                 command.NavigationStrategy as GraphStrategy<TD> ??
                 new GraphStrategy<TD>(new RelationshipNavigation<TD>());
 
+            var aliasDictionary = BuildAliasDictionary(graphStrategy);
+
             try
             {
-                var aliasDictionary = BuildAliasDictionary(graphStrategy);
-
                 // Map primary
                 var primaryNavigation =
                     graphStrategy
@@ -83,7 +84,8 @@ namespace White.Knight.Neo4J.Translator
                 if (!string.IsNullOrEmpty(query))
                     query = $"WHERE {query}";
 
-                var (matchString, returnAliases) = BuildMatchString(graphStrategy, aliasDictionary);
+                var (matchString, returnAliases) =
+                    BuildMatchString(graphStrategy, aliasDictionary);
 
                 var queryCommandText =
                     matchString +
@@ -100,28 +102,12 @@ namespace White.Knight.Neo4J.Translator
                 var countCommandIndex =
                     $"COUNT({primaryAlias})";
 
-                var page = pagingOptions?.Page;
-                var pageSize = pagingOptions?.PageSize;
-                var sortDescending = pagingOptions?.Descending;
-
-                var pagingString = string.Empty;
-                var orderByString = string.Empty;
-                if (pageSize.HasValue && page.HasValue) pagingString = $"SKIP {page.Value} LIMIT {pageSize.Value} ";
-
-                if (pagingOptions?.OrderBy != null)
-                {
-                    var sort =
-                        ClassEx
-                            .ExtractPropertyInfo<TD>(pagingOptions?.OrderBy);
-
-                    orderByString = $"ORDER BY {primaryAlias}.{sort.Name} " +
-                                    $"{(sortDescending.GetValueOrDefault() ? "DESC" : string.Empty)}";
-                }
-
                 queryCommandText =
-                    queryCommandText
-                        .Replace(Constants.PagingPlaceholder, pagingString)
-                        .Replace(Constants.OrderByPlaceholder, orderByString);
+                    ApplyPagingToQuery(
+                        queryCommandText,
+                        primaryAlias.ToString(),
+                        pagingOptions
+                    );
 
                 return new Neo4JTranslationResult
                 {
@@ -129,13 +115,38 @@ namespace White.Knight.Neo4J.Translator
                     CountCommandText = countCommandText,
                     CountCommandIndex = countCommandIndex,
                     Parameters = new Dictionary<string, string>(),
-                    AliasDictionary = aliasDictionary
+                    AliasDictionary = aliasDictionary,
+                    ForcedClientSideEvaluation = false
                 };
             }
-            catch (Exception e) when (e is NotImplementedException or UnparsableSpecificationException)
+            catch (Exception e) when (e is UnparsableSpecificationException)
             {
                 _logger
-                    .LogDebug("Error translating Query: ({specification})", specification.GetType().Name);
+                    .LogWarning("Error translating Query: ({specification})", specification.GetType().Name);
+
+                // prepare a server side 'get all' to filter client-side
+                var (matchString, returnAliases) =
+                    BuildMatchString(graphStrategy, aliasDictionary);
+
+                // No paging or sorting done server-side
+                var queryCommandText =
+                    matchString +
+                    $"RETURN {string.Join(',', returnAliases.Select(o => o))} ";
+
+                return new Neo4JTranslationResult
+                {
+                    QueryCommandText = queryCommandText,
+                    CountCommandText = null,
+                    CountCommandIndex = null,
+                    Parameters = new Dictionary<string, string>(),
+                    AliasDictionary = aliasDictionary,
+                    ForcedClientSideEvaluation = true
+                };
+            }
+            catch (Exception e) when (e is NotImplementedException)
+            {
+                _logger
+                    .LogWarning("Error translating Query: ({specification})", specification.GetType().Name);
 
                 throw;
             }
@@ -243,6 +254,37 @@ namespace White.Knight.Neo4J.Translator
                     .ToString(),
                 returnAliases
             );
+        }
+
+        private static string ApplyPagingToQuery(
+            string queryCommandText,
+            string primaryAlias,
+            PagingOptions<TD> pagingOptions)
+        {
+            var page = pagingOptions?.Page;
+            var pageSize = pagingOptions?.PageSize;
+            var sortDescending = pagingOptions?.Descending;
+
+            var pagingString = string.Empty;
+            var orderByString = string.Empty;
+            if (pageSize.HasValue && page.HasValue) pagingString = $"SKIP {page.Value} LIMIT {pageSize.Value} ";
+
+            if (pagingOptions?.OrderBy != null)
+            {
+                var sort =
+                    ClassEx
+                        .ExtractPropertyInfo<TD>(pagingOptions?.OrderBy);
+
+                orderByString = $"ORDER BY {primaryAlias}.{sort.Name} " +
+                                $"{(sortDescending.GetValueOrDefault() ? "DESC" : string.Empty)}";
+            }
+
+            queryCommandText =
+                queryCommandText
+                    .Replace(Constants.PagingPlaceholder, pagingString)
+                    .Replace(Constants.OrderByPlaceholder, orderByString);
+
+            return queryCommandText;
         }
 
         private string Translate(Specification<TD> spec, string alias)

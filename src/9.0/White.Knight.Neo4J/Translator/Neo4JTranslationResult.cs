@@ -13,5 +13,7 @@ namespace White.Knight.Neo4J.Translator
         public IDictionary<string, string> Parameters { get; set; }
 
         public Dictionary<int, char> AliasDictionary { get; set; }
+
+        public bool ForcedClientSideEvaluation { get; set; }
     }
 }

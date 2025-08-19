@@ -38,6 +38,9 @@ namespace White.Knight.Neo4J
             IQueryCommand<TD, TP> command,
             CancellationToken cancellationToken)
         {
+            var clientSideQueryCommandText = string.Empty;
+            var aliasDictionary = new Dictionary<int, char>();
+
             try
             {
                 Logger
@@ -54,6 +57,13 @@ namespace White.Knight.Neo4J
 
                 if (translationResult == null)
                     throw new Exception("There was an error translating the Redis command.");
+
+                if (translationResult.ForcedClientSideEvaluation)
+                {
+                    clientSideQueryCommandText = translationResult.QueryCommandText;
+                    aliasDictionary = translationResult.AliasDictionary;
+                    throw new UnparsableSpecificationException();
+                }
 
                 translationResult.QueryCommandText =
                     translationResult
@@ -108,11 +118,9 @@ namespace White.Knight.Neo4J
                 _clientSideEvaluationHandler
                     .Handle<TD>();
 
-                var entityName =
-                    typeof(TD)
-                        .Name;
-
-                var commandText = $"MATCH ({Constants.CommonNodeAlias}:{entityName}) RETURN {Constants.CommonNodeAlias}";
+                var commandText =
+                    clientSideQueryCommandText
+                        .Replace(Constants.IdMatchingField, string.Empty);
 
                 var records =
                     (await
@@ -130,7 +138,7 @@ namespace White.Knight.Neo4J
                     _nodeMapper
                         .Perform(
                             command.NavigationStrategy as GraphStrategy<TD>,
-                            new Dictionary<int, char>(),
+                            aliasDictionary,
                             records.ToArray())
                         .AsQueryable();
 
