@@ -21,8 +21,6 @@ namespace White.Knight.Neo4J.Extensions
                 var propertyName =
                     propertyInfo
                         .Name;
-                        // Using the below, the field cannot be retrieved when calling .AsObject<T>()
-                        //.GetMemberPropertyOrJsonAlias();
 
                 if (propertyValue != null)
                     commandMappings
