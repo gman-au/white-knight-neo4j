@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Neo4j.Driver;
+using White.Knight.Neo4J.Extensions;
 using White.Knight.Neo4J.Navigations;
 using White.Knight.Neo4J.Relationships;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
@@ -16,11 +18,17 @@ namespace White.Knight.Neo4J.Mapping
             (loggerFactory ?? new NullLoggerFactory())
             .CreateLogger<NodeMapper<TD>>();
 
+        private readonly Stopwatch _stopwatch = new();
+
         public IEnumerable<TD> Perform(
             GraphStrategy<TD> graphStrategy,
             Dictionary<int, char> aliasDictionary,
             IEnumerable<IRecord> records)
         {
+            _stopwatch
+                .Restart();
+
+            var mapCount = 0;
             if (records?.FirstOrDefault() == null)
                 return [];
 
@@ -37,7 +45,6 @@ namespace White.Knight.Neo4J.Mapping
             if (!enumerator.MoveNext())
                 throw new Exception($"Could not map nodes of type {typeof(TD).Name}.");
 
-            // Start with last navigation
             var currentNavigation = enumerator.Current;
 
             var currentAlias = aliasDictionary[currentNavigation.GetHashCode()];
@@ -58,12 +65,23 @@ namespace White.Knight.Neo4J.Mapping
                         currentNode.ElementId,
                         currentNavigation,
                         aliasDictionary,
-                        allRecords
+                        allRecords,
+                        ref mapCount
                     );
 
                     mappedNodes
                         .Add(mappedNode);
                 }
+
+            _stopwatch
+                .Stop();
+
+            _logger
+                .LogDebug("Mapped {mapCount} nodes in {duration} ms",
+                    mapCount,
+                    _stopwatch
+                        .ElapsedMilliseconds
+                );
 
             return mappedNodes;
         }
@@ -73,8 +91,11 @@ namespace White.Knight.Neo4J.Mapping
             string currentElementId,
             IRelationshipNavigation currentNavigation,
             Dictionary<int, char> aliasDictionary,
-            ICollection<IRecord> allRecords)
+            ICollection<IRecord> allRecords,
+            ref int mapCount)
         {
+            mapCount++;
+
             try
             {
                 if (allRecords?.FirstOrDefault() == null) return;
@@ -84,6 +105,8 @@ namespace White.Knight.Neo4J.Mapping
                 var currentAlias = aliasDictionary[currentNavigation.GetHashCode()];
 
                 var nextNavigation = currentNavigation.Next();
+
+                if (nextNavigation == RelationshipNavigation.Empty) return;
 
                 var nextAlias = aliasDictionary[nextNavigation.GetHashCode()];
 
@@ -126,13 +149,16 @@ namespace White.Knight.Neo4J.Mapping
                         applicableNextNode.ElementId,
                         nextNavigation,
                         aliasDictionary,
-                        allRecords);
+                        allRecords,
+                        ref mapCount);
                 }
             }
             catch (KeyNotFoundException ex)
             {
                 _logger
                     .LogWarning("Could not find key in alias dictionary: {message}", ex.Message);
+
+                throw;
             }
         }
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
@@ -64,6 +65,60 @@ namespace White.Knight.Neo4J.Tests.Integration
             await
                 context
                     .ActSearchWithBasicRelationshipAsync();
+
+            context
+                .AssertOrdersWereRetrievedAndMapped();
+        }
+
+        [Fact]
+        public async Task Test_Search_With_No_Matching_Relationship()
+        {
+            var context = (Neo4JRepositoryTestContext)GetContext();
+
+            await
+                context
+                    .ArrangeRepositoryDataAsync();
+
+            await
+                context
+                    .ActSearchWithNoMatchingRelationshipAsync();
+
+            context
+                .AssertNoCustomersWereRetrieved();
+        }
+
+        [Fact]
+        public async Task Test_Search_With_Matching_Relationship_And_Empty_Setter()
+        {
+            var context = (Neo4JRepositoryTestContext)GetContext();
+
+            await
+                context
+                    .ArrangeRepositoryDataAsync();
+
+            await
+                context
+                    .ActSearchWithBasicRelationshipEmptySetterAsync();
+
+            context
+                .AssertOrdersWereRetrievedButNotMapped();
+        }
+
+        [Fact]
+        public async Task Test_Search_With_Matching_Relationship_And_Null_Setter()
+        {
+            var context = (Neo4JRepositoryTestContext)GetContext();
+
+            await
+                context
+                    .ArrangeRepositoryDataAsync();
+
+            await
+                context
+                    .ActSearchWithBasicRelationshipNullSetterAsync();
+
+            context
+                .AssertOrdersWereRetrievedButNotMapped();
         }
 
         [Fact]
@@ -78,6 +133,9 @@ namespace White.Knight.Neo4J.Tests.Integration
             await
                 context
                     .ActSearchWithAdvancedRelationshipAsync();
+
+            context
+                .AssertFullNestingsWereRetrieved();
         }
 
         private class Neo4JRepositoryTestContext : RepositoryTestContextBase, IRepositoryTestContext
@@ -136,6 +194,54 @@ namespace White.Knight.Neo4J.Tests.Integration
                             );
             }
 
+            public async Task ActSearchWithBasicRelationshipEmptySetterAsync()
+            {
+                Results =
+                    await
+                        Sut
+                            .QueryAsync
+                            (
+                                new CustomerSpecByCustomerNumber(200)
+                                    .ToQueryCommand()
+                                    .WithRelationshipStrategy(
+                                        new RelationshipNavigation<Customer, Order>(
+                                            "CREATED_ORDER",
+                                            (c, o) => { }))
+                            );
+            }
+
+            public async Task ActSearchWithBasicRelationshipNullSetterAsync()
+            {
+                Results =
+                    await
+                        Sut
+                            .QueryAsync
+                            (
+                                new CustomerSpecByCustomerNumber(200)
+                                    .ToQueryCommand()
+                                    .WithRelationshipStrategy(
+                                        new RelationshipNavigation<Customer, Order>(
+                                            "CREATED_ORDER",
+                                            null))
+                            );
+            }
+
+            public async Task ActSearchWithNoMatchingRelationshipAsync()
+            {
+                Results =
+                    await
+                        Sut
+                            .QueryAsync
+                            (
+                                new CustomerSpecByCustomerNumber(200)
+                                    .ToQueryCommand()
+                                    .WithRelationshipStrategy(
+                                        new RelationshipNavigation<Customer, Order>(
+                                            "NO_MATCH_EXPECTED",
+                                            (c, o) => c.Orders.Add(o)))
+                            );
+            }
+
             public async Task ActSearchWithAdvancedRelationshipAsync()
             {
                 Results =
@@ -157,6 +263,103 @@ namespace White.Knight.Neo4J.Tests.Integration
                                                     (c, a) => c.Addresses.Add(a))
                                             )))
                             );
+            }
+
+            public async Task ActSearchWithAdvancedRelationshipAndNullSettersAsync()
+            {
+                Results =
+                    await
+                        Sut
+                            .QueryAsync
+                            (
+                                new SpecificationByAll<Customer>()
+                                    .ToQueryCommand()
+                                    .WithRelationshipStrategy(
+                                        new RelationshipNavigation<Customer, Order, Customer, Address>(
+                                            "CREATED_ORDER",
+                                            null,
+                                            new RelationshipNavigation<Order, Customer, Address>(
+                                                "CREATED_BY",
+                                                null,
+                                                new RelationshipNavigation<Customer, Address>(
+                                                    "LIVES_AT",
+                                                    null
+                                            ))))
+                            );
+            }
+
+            public void AssertOrdersWereRetrievedAndMapped()
+            {
+                var records =
+                    Results?
+                        .Records?
+                        .ToList();
+
+                Assert.NotNull(records);
+                Assert.NotEmpty(records);
+
+                foreach (var customer in records)
+                {
+                    Assert.NotEmpty(customer.Orders);
+                }
+            }
+
+            public void AssertNoCustomersWereRetrieved()
+            {
+                var records =
+                    Results?
+                        .Records?
+                        .ToList();
+
+                Assert.NotNull(records);
+                Assert.Empty(records);
+            }
+
+            public void AssertOrdersWereRetrievedButNotMapped()
+            {
+                var records =
+                    Results?
+                        .Records?
+                        .ToList();
+
+                Assert.NotNull(records);
+                Assert.NotEmpty(records);
+
+                foreach (var customer in records)
+                {
+                    Assert.Empty(customer.Orders);
+                }
+            }
+
+            public void AssertFullNestingsWereRetrieved()
+            {
+                var customers =
+                    Results?
+                        .Records?
+                        .ToList();
+
+                Assert.NotNull(customers);
+                Assert.NotEmpty(customers);
+
+                var expectedCount = 0;
+                foreach (var customer in customers)
+                {
+                    Assert.NotEmpty(customer.Orders);
+                    expectedCount++;
+                    foreach (var customerOrder in customer.Orders)
+                    {
+                        var orderCustomer = customerOrder.Customer;
+                        Assert.NotNull(orderCustomer);
+                        expectedCount++;
+                        foreach (var customerAddress in orderCustomer.Addresses)
+                        {
+                            Assert.NotNull(customerAddress);
+                            expectedCount++;
+                        }
+                    }
+                }
+
+                Assert.Equal(532, expectedCount);
             }
 
             private static IConfigurationRoot InterceptConfiguration(IConfigurationRoot existingConfiguration, int hostedPort)
