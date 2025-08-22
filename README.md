@@ -54,7 +54,8 @@ This repository is the [Neo4j](https://neo4j.com/) implementation of the [White 
   * As such, where a new, unique ID is to be set for a new record, it must be determined **prior** to insertion i.e.:  
   `Customer.CustomerId = Guid.NewGuid();`
 
-> [!TIP] It is worth bearing in mind that Neo4j does not require unique IDs for a given entity to be inserted, as it maintains its own unique entity IDs in the background.
+> [!TIP]
+> It is worth bearing in mind that Neo4j does not require unique IDs for a given entity to be inserted, as it maintains its own unique entity IDs in the background.
 
 ### POCO collections must be initialised
 * For domain library POCOs, virtual collections (used in Entity Framework, for example, to bind child relationships, for example) _need to be initialised_ as part of their class code i.e.
